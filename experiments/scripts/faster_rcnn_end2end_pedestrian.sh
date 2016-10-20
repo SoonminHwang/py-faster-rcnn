@@ -29,10 +29,10 @@ case $DATASET in
     PT_DIR="caltech"
     ITERS=70000
     ;;
-  kaist)
+  kaist-multispectral)
     TRAIN_IMDB="kaist_train02"
     TEST_IMDB="kaist_test20"
-    PT_DIR="kaist
+    PT_DIR="kaist-multispectral"
     ITERS=70000
     ;;
   *)
