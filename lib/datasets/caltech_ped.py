@@ -213,7 +213,8 @@ class caltech_ped(imdb):
 	
 	boxes = np.zeros((num_objs, 4), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.uint8)
-        
+        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
+	
 	# Load object bounding boxes into a data frame.
         for ix, obj in enumerate(objs):
 	    ignore = false
@@ -258,7 +259,9 @@ class caltech_ped(imdb):
             if obj[0] not in self.config['labels']:	ignore = True		
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = self._class_to_ind['person'] if not ignore else self._class_to_ind['ignore']
+	    overlaps[ix, cls] = 1.0
 	
+	overlaps = scipy.sparse.csr_matrix(overlaps)
 	
 	
 	#set_name, video_name, n_frame = os.path.basename(index).split('_')	
@@ -322,7 +325,8 @@ class caltech_ped(imdb):
 	#		print("Error!! index image is not in annotations.json")
 	#		
 		return {'boxes' : boxes,
-                'gt_classes': classes,                
+                'gt_classes': classes,
+		'gt_overlaps': overlaps,
                 'flipped' : false}
 		
     #def _get_comp_id(self):
