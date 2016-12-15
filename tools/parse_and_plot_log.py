@@ -267,6 +267,7 @@ def main():
     args = parse_args()
     train_dict_list, test_dict_list = parse_log(args.logfile_path)
 
+    import numpy as np
     # Save to csv files
     output_dir = os.path.dirname(args.logfile_path)
     save_csv_files(args.logfile_path, output_dir, train_dict_list,
@@ -275,10 +276,18 @@ def main():
 
     # Draw plot
     iters = [train_dict['NumIters'] for train_dict in train_dict_list]
-    loss_bbox = [train_dict['bbox_loss'] for train_dict in train_dict_list]
-    
+    try:
+        loss_bbox = [train_dict['bbox_loss'] for train_dict in train_dict_list] # For ZF
+    except:
+        loss_bbox = [train_dict['loss_bbox'] for train_dict in train_dict_list]
+
+    loss_bbox_avg = []
+    for ii in range(len(loss_bbox) - 100):        
+        loss_bbox_avg.append(np.mean(loss_bbox[ii:ii+100])) 
+        
     fig = plt.figure()
-    plt.plot(iters, loss_bbox, '-+')
+    plt.plot(iters, loss_bbox, 'b-+')    
+    plt.plot(iters[:-100], loss_bbox_avg, 'r-')    
     plt.xlabel('Iteration')
     plt.ylabel('Loss')
     plt.title('[train] loss_bbox')
