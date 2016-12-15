@@ -1,7 +1,7 @@
 # My own results
 
 
-## Test time
+## Training time
 
  With CUDA 8.0 + cuDNN v5.0 (DL-34 machine)
 
@@ -14,15 +14,28 @@
 
  With CUDA 8.0 + cuDNN v5.1 (DL-34 machine)
 
-| Models | Storage | Time per iter |
-|:------:|:-------:|:-------------:|
-| ZF | HDD | 0.139s |
-| VGG16 | HDD | 0.279s |
-| VGG16 | SSD | 0.277s |
-| ResNet50 | SSD | 0.558s |
+| Models   | Storage | Time per iter |
+|:--------:|:-------:|:-------------:|
+| ZF       | HDD     | 0.139s        |
+| VGG16    | HDD     | 0.279s        |
+| VGG16    | SSD     | 0.277s        |
+| ResNet50 | SSD     | 0.558s        |
 
+
+## Test time
+| Models   | Storage | Time per iter |
+|:--------:|:-------:|:-------------:|
+| VGG16    | SSD     | 0.072s        |
+| ResNet50 | SSD     | 0.135s        |
 
 ## Accuracy
+| Models    | Mean AP | Training        | Testing     |
+|:---------:|:-------:|:---------------:|:-----------:| 
+| VGG16     | 0.691   | VOC 07 trainval | VOC 07 test |
+| ResNet50  | 0.723   | VOC 07 trainval | VOC 07 test | 
+
+
+## Accuracy in detail
 
 | Models | aeroplane | bicycle | bird | boat | bottle | bus | car | cat | chair | cow | giningtable | dog | horse | motorbike | person | pottedplant | sheep | sofa | train | tvmonitor | mAP |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
