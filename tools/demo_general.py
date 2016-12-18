@@ -6,9 +6,12 @@
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Ross Girshick
 # --------------------------------------------------------
+# Modified by Soonmin Hwang
+# --------------------------------------------------------
 
 """
 Demo script showing detections in sample images.
+Modified to enhance flexivility for trained model selection and dataset
 
 See README.md for installation instructions before running.
 """
@@ -32,13 +35,11 @@ VOC_CLASSES = ('__background__',
            'sheep', 'sofa', 'train', 'tvmonitor')
 KITTI_CLASSES = ('__background__', 'car', 'pedestrian', 'cyclist')
 
-CLASSES = KITTI_CLASSES
+DATASETS = {'kitti': KITTI_CLASSES, 'voc': VOC_CLASSES}
 
-NETS = {'vgg16': ('VGG16',
-                  'VGG16_faster_rcnn_final.caffemodel'),
-        'zf': ('ZF',
-                  'ZF_faster_rcnn_final.caffemodel')}
-
+#CONF_THRESH = 0.8
+CONF_THRESH = 0.2
+NMS_THRESH = 0.3
 
 def vis_detections(im, class_name, dets, thresh=0.5):
     """Draw detected bounding boxes."""
@@ -65,14 +66,16 @@ def vis_detections(im, class_name, dets, thresh=0.5):
                 fontsize=14, color='white')
 
     ax.set_title(('{} detections with '
-                  'p({} | box) >= {:.1f}').format(class_name, class_name,
+                  'p({} | box) >= {:.2f}').format(class_name, class_name,
                                                   thresh),
                   fontsize=14)
     plt.axis('off')
     plt.tight_layout()
-    plt.draw()
+    plt.draw()    
+    plt.show()
 
-def demo(net, image_name):
+
+def demo(net, image_name, conf_thres, nms_thres):
     """Detect object classes in an image using pre-computed object proposals."""
 
     # Load the demo image
@@ -88,17 +91,16 @@ def demo(net, image_name):
            '{:d} object proposals').format(timer.total_time, boxes.shape[0])
 
     # Visualize detections for each class
-    CONF_THRESH = 0.8
-    NMS_THRESH = 0.3
     for cls_ind, cls in enumerate(CLASSES[1:]):
         cls_ind += 1 # because we skipped background
         cls_boxes = boxes[:, 4*cls_ind:4*(cls_ind + 1)]
         cls_scores = scores[:, cls_ind]
         dets = np.hstack((cls_boxes,
                           cls_scores[:, np.newaxis])).astype(np.float32)
-        keep = nms(dets, NMS_THRESH)
+        keep = nms(dets, nms_thres)
         dets = dets[keep, :]
-        vis_detections(im, cls, dets, thresh=CONF_THRESH)
+        vis_detections(im, cls, dets, thresh=conf_thres)
+        plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + image_name))
 
 def parse_args():
     """Parse input arguments."""
@@ -108,8 +110,15 @@ def parse_args():
     parser.add_argument('--cpu', dest='cpu_mode',
                         help='Use CPU mode (overrides --gpu)',
                         action='store_true')
-    parser.add_argument('--net', dest='demo_net', help='Network to use [vgg16]',
-                        choices=NETS.keys(), default='vgg16')
+    parser.add_argument('--net', dest='demo_net', help='Network to use [*.prototxt]')
+    parser.add_argument('--caffemodel', dest='caffemodel', help='Trained weights [*.caffemodel]')
+    parser.add_argument('--dataset', dest='dataset', help='Specify the trained dataset for category definition',
+                        choices=DATASETS.keys(), default='kitti')
+
+    parser.add_argument('--conf_thres', dest='conf_thres', help='Confidence threshold', 
+                        default=CONF_THRESH, type=float)
+    parser.add_argument('--nms_thres', dest='nms_thres', help='NMS threshold', 
+                        default=NMS_THRESH, type=float)
 
     args = parser.parse_args()
 
@@ -120,11 +129,16 @@ if __name__ == '__main__':
 
     args = parse_args()
 
-    prototxt = os.path.join(cfg.MODELS_DIR, NETS[args.demo_net][0],
-                            'faster_rcnn_alt_opt', 'faster_rcnn_test.pt')
-    caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',
-                              NETS[args.demo_net][1])
+    #prototxt = os.path.join(cfg.MODELS_DIR, NETS[args.demo_net][0],
+    #                        'faster_rcnn_alt_opt', 'faster_rcnn_test.pt')
+    #caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',
+    #                          NETS[args.demo_net][1])
 
+    CLASSES = DATASETS[args.dataset]
+
+    prototxt = args.demo_net
+    caffemodel = args.caffemodel
+    
     if not os.path.isfile(caffemodel):
         raise IOError(('{:s} not found.\nDid you run ./data/script/'
                        'fetch_faster_rcnn_models.sh?').format(caffemodel))
@@ -144,12 +158,13 @@ if __name__ == '__main__':
     for i in xrange(2):
         _, _= im_detect(net, im)
 
-    im_names = ['000456.jpg', '000542.jpg', '001150.jpg',
-                '001763.jpg', '004545.jpg',
-                'KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png' ] # KITTI Test set
+    #im_names = ['000456.jpg', '000542.jpg', '001150.jpg',
+    #            '001763.jpg', '004545.jpg']
+    #            'KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png' ] # KITTI Test set
+    im_names = ['KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png' ] # KITTI Test set]
     for im_name in im_names:
         print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
         print 'Demo for data/demo/{}'.format(im_name)
-        demo(net, im_name)
-
-    plt.show()
+        demo(net, im_name, args.conf_thres, args.nms_thres)
+     
+    #plt.show()

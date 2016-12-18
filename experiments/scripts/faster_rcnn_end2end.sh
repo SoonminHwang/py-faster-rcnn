@@ -23,6 +23,18 @@ EXTRA_ARGS=${array[@]:3:$len}
 EXTRA_ARGS_SLUG=${EXTRA_ARGS// /_}
 
 case $DATASET in
+  kitti_trainval)
+    TRAIN_IMDB="kitti_2012_trainval"
+    TEST_IMDB="kitti_2012_val"
+    PT_DIR="kitti"
+    ITERS=100000
+    ;;
+  kitti)
+    TRAIN_IMDB="kitti_2012_train"
+    TEST_IMDB="kitti_2012_val"
+    PT_DIR="kitti"
+    ITERS=70000
+    ;;
   voc_0712)
     TRAIN_IMDB="voc_2007_trainval+voc_2012_trainval"
     TEST_IMDB="voc_2012_test"
@@ -33,6 +45,15 @@ case $DATASET in
     TRAIN_IMDB="voc_2007_trainval"
     TEST_IMDB="voc_2007_test"
     PT_DIR="pascal_voc"
+    ITERS=70000
+    ;;
+  coco14_trainval)
+    # This is a very long and slow training schedule
+    # You can probably use fewer iterations and reduce the
+    # time to the LR drop (set in the solver to 350,000 iterations).
+    TRAIN_IMDB="coco_2014_train+coco_2014_val"
+    TEST_IMDB="coco_2015_test"
+    PT_DIR="coco14_trainval"
     ITERS=70000
     ;;
   coco)
