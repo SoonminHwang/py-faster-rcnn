@@ -10,21 +10,6 @@ layer {
     layer: 'RoIDataLayer'
     param_str: "'num_classes': 4"
   }
-  phase: TRAIN
-}
-
-layer {
-  name: 'input-data'
-  type: 'Python'
-  top: 'data'
-  top: 'im_info'
-  top: 'gt_boxes'
-  python_param {
-    module: 'roi_data_layer.layer'
-    layer: 'RoIDataLayer'
-    param_str: "'num_classes': 4"
-  }
-  phase: TEST
 }
 
 layer {

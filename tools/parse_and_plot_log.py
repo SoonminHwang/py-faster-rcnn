@@ -19,6 +19,14 @@ import csv
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
+import numpy as np
+import seaborn as sns
+
+DATASET = {'kitti_train':'KITTI train/val', 'voc07_07':'PASCAL VOC train(07)/val(07)',
+	   'voc0712_07': 'PASCAL VOC train(07+12)/val(07)',
+	   'voc12_12': 'PASCAL VOC train(12)/val(12)',
+	   'voc0712_12': 'PASCAL VOC train(07+12)/val(12)'}
+
 def extract_datetime_from_line(line, year):
     # Expected format: I0210 13:39:22.381027 25210 solver.cpp:204] Iteration 100, lr = 0.00992565
     line = line.strip().split()
@@ -259,39 +267,120 @@ def parse_args():
                         help=('Column delimiter in output files '
                               '(default: \'%(default)s\')'))
 
+    parser.add_argument('--dataset', dest='dataset', 
+			choices=DATASET.keys(), help='Specify train/test dataset')
+
     args = parser.parse_args()
     return args
 
+def drawPlot(ax, dict_list, xLabel, yLabel, avg_step, clr, prop):
+    xx = [ dl[xLabel] for dl in dict_list]
+    yy = [ dl[yLabel] for dl in dict_list]
+
+    yy_avg = []
+    for ii in range(0, len(yy), avg_step):
+	s = max(0, ii-avg_step/2)
+	e = min(len(yy), ii+avg_step/2)
+	yy_avg.append(np.mean(yy[s:e]))
+
+    ax.plot(xx, yy, clr, alpha=prop['alpha'])
+    ax.plot(xx[::avg_step], yy_avg, clr, label=prop['label'])
 
 def main():
     args = parse_args()
     train_dict_list, test_dict_list = parse_log(args.logfile_path)
 
-    import numpy as np
     # Save to csv files
     output_dir = os.path.dirname(args.logfile_path)
     save_csv_files(args.logfile_path, output_dir, train_dict_list,
-                   test_dict_list, delimiter=args.delimiter)
+                   test_dict_list, delimiter=args.delimiter) 
+
+    loss_term = [ loss for loss in train_dict_list[0].keys() if 'loss' in loss ]
+
+    cols = int(np.ceil(len(loss_term) / 2.0))
+    rows = 2
+
+    fig, axes = plt.subplots(rows, cols, figsize=(10,10))
+    fig.subplots_adjust(hspace=0.5)
+    axes = axes.flatten()
+
+    for ii, term in enumerate(loss_term):
+	drawPlot(axes[ii], train_dict_list, 'NumIters', term, 40, 'b-', {'alpha':0.3, 'label':'Train'})
+	try:	
+	    drawPlot(axes[ii], test_dict_list,  'NumIters', term, 4,  'r-', {'alpha':0.3, 'label':'Test'})
+	except:
+	    print('Cannot find test loss')
+
+	axes[ii].set_title(term)
+	axes[ii].set_xlabel('Iteration')
+	axes[ii].set_ylabel('Loss')
+	xticklabel = [ '{}k'.format(int(int(xl)/1000)) for xl in axes[ii].get_xticks().tolist()[1:] ]
+	axes[ii].set_xticklabels( [''] + xticklabel )
+	axes[ii].legend()	
 
 
-    # Draw plot
-    iters = [train_dict['NumIters'] for train_dict in train_dict_list]
-    try:
-        loss_bbox = [train_dict['bbox_loss'] for train_dict in train_dict_list] # For ZF
-    except:
-        loss_bbox = [train_dict['loss_bbox'] for train_dict in train_dict_list]
+    sns.set_style("white")
+    sns.set_context("poster")
 
-    loss_bbox_avg = []
-    for ii in range(len(loss_bbox) - 100):        
-        loss_bbox_avg.append(np.mean(loss_bbox[ii:ii+100])) 
+
+    plt.suptitle(DATASET[args.dataset])
+
+
+    #drawPlot(train_dict_list, 'NumIters', 'loss_bbox', 40, 'b-', {'alpha':0.3, 'label':'Train'})
+    #drawPlot(test_dict_list, 'NumIters', 'loss_bbox', 4, 'r-', {'alpha':0.3, 'label':'Test'})
+
+    #plt.xlabel('Iteration')
+    #plt.ylabel('Loss')
+
+    #plt.legend()
+
+    plt.savefig(args.logfile_path + '.png')
+
+#    # Draw plot
+#    iters = [train_dict['NumIters'] for train_dict in train_dict_list]
+#    try:
+#        loss_bbox = [train_dict['bbox_loss'] for train_dict in train_dict_list] # For ZF
+#    except:
+#        loss_bbox = [train_dict['loss_bbox'] for train_dict in train_dict_list]
+#
+#    step = 20
+#    loss_bbox_avg = []
+#    for ii in range(0, len(loss_bbox), step):
+#        s = max(0, ii-step/2)
+#	e = min(len(loss_bbox), ii+step/2)
+#	loss_bbox_avg.append(np.mean(loss_bbox[s:e]))
+
+    #loss_bbox_avg = []
+    #for ii in range(len(loss_bbox) - 100):        
+    #    loss_bbox_avg.append(np.mean(loss_bbox[ii:ii+100])) 
         
-    fig = plt.figure()
-    plt.plot(iters, loss_bbox, 'b-+')    
-    plt.plot(iters[:-100], loss_bbox_avg, 'r-')    
-    plt.xlabel('Iteration')
-    plt.ylabel('Loss')
-    plt.title('[train] loss_bbox')
-    plt.savefig(args.logfile_path + '.png', dpi=fig.dpi)
+#    fig = plt.figure()
+
+#    plt.plot(iters, loss_bbox, 'b-', alpha=0.3 )
+#    plt.plot(iters[::step], loss_bbox_avg, 'b-', label='Train')    
+#    plt.xlabel('Iteration')
+#    plt.ylabel('Loss')
+#
+#    try:
+#	# Validation
+#	iters = [test_dict['NumIters'] for test_dict in test_dict_list]
+#	loss_bbox = [test_dict['loss_bbox'] for test_dict in test_dict_list]
+#
+#	step = 4
+#	loss_bbox_avg = []
+#	for ii in range(0, len(loss_bbox), step):
+#	    s = max(0, ii-step/2)
+#	    e = min(len(loss_bbox), ii+step/2)
+#	    loss_bbox_avg.append(np.mean(loss_bbox[s:e]))
+#
+#	plt.plot(iters, loss_bbox, 'r-', alpha=0.3)
+#	plt.plot(iters[::step], loss_bbox_avg, 'r-', label='Val')
+#    except:
+#	print('Cannot load test loss')
+#
+#    plt.legend()
+#    plt.title('loss_bbox')
+#    plt.savefig(args.logfile_path + '.png', dpi=fig.dpi)
 
 if __name__ == '__main__':
     main()

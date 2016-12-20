@@ -10,7 +10,9 @@ layer {
     layer: 'RoIDataLayer'
     param_str: "'num_classes': 4"
   }
-  phase: TRAIN
+  include {
+    phase: TRAIN
+  }
 }
 
 layer {
@@ -24,7 +26,9 @@ layer {
     layer: 'RoIDataLayer'
     param_str: "'num_classes': 4"
   }
-  phase: TEST
+  include {
+    phase: TEST
+  }
 }
 
 layer {

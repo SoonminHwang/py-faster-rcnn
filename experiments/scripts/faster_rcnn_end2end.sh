@@ -78,7 +78,8 @@ echo Logging output to "$LOG"
 time ./tools/train_net.py --gpu ${GPU_ID} \
   --solver models/${PT_DIR}/${NET}/faster_rcnn_end2end/solver.prototxt \
   --weights data/imagenet_models/${NET}.v2.caffemodel \
-  --imdb ${TRAIN_IMDB} \
+  --imdb_train ${TRAIN_IMDB} \
+  --imdb_val ${TEST_IMDB} \
   --iters ${ITERS} \
   --cfg experiments/cfgs/faster_rcnn_end2end.yml \
   ${EXTRA_ARGS}

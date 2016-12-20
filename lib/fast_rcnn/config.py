@@ -21,6 +21,7 @@ import os.path as osp
 import numpy as np
 # `pip install easydict` if you don't have it
 from easydict import EasyDict as edict
+import datetime
 
 __C = edict()
 # Consumers can get config by:
@@ -218,6 +219,7 @@ def get_output_dir(imdb, net=None):
     A canonical path is built using the name from an imdb and a network
     (if not None).
     """
+    #nowStr = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%Mm')
     outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
     if net is not None:
         outdir = osp.join(outdir, net.name)

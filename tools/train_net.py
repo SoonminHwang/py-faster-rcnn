@@ -20,6 +20,8 @@ import pprint
 import numpy as np
 import sys
 
+import datetime
+
 def parse_args():
     """
     Parse input arguments
@@ -40,9 +42,12 @@ def parse_args():
     parser.add_argument('--cfg', dest='cfg_file',
                         help='optional config file',
                         default=None, type=str)
-    parser.add_argument('--imdb', dest='imdb_name',
+    parser.add_argument('--imdb_train', dest='imdb_train_name',
                         help='dataset to train on',
                         default='voc_2007_trainval', type=str)
+    parser.add_argument('--imdb_val', dest='imdb_val_name',
+                        help='dataset to validation on',
+                        default='voc_2007_test', type=str)    
     parser.add_argument('--rand', dest='randomize',
                         help='randomize (do not use a fixed seed)',
                         action='store_true')
@@ -101,12 +106,15 @@ if __name__ == '__main__':
     caffe.set_mode_gpu()
     caffe.set_device(args.gpu_id)
 
-    imdb, roidb = combined_roidb(args.imdb_name)
-    print '{:d} roidb entries'.format(len(roidb))
+    imdb_train, roidb_train = combined_roidb(args.imdb_train_name)
+    imdb_val, roidb_val = combined_roidb(args.imdb_val_name)
 
-    output_dir = get_output_dir(imdb)
+    print '[Train] {:d} roidb entries'.format(len(roidb_train))
+    print '[Val] {:d} roidb entries'.format(len(roidb_val))
+
+    output_dir = get_output_dir(imdb_train)    
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
-    train_net(args.solver, roidb, output_dir,
+    train_net(args.solver, roidb_train, roidb_val, output_dir,
               pretrained_model=args.pretrained_model,
               max_iters=args.max_iters)

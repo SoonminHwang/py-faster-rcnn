@@ -47,6 +47,7 @@
 | 8   | VGG16     | -       | COCO 14 trainval   | COCO 15 test |
 | 9   | VGG16     | 0.469   | KITTI train        | KITTI val    |
 | 10  | ResNet50  | -       | KITTI train        | KITTI val    |
+| 11  | VGG16     | 0.469   | KITTI train        | KITTI val    |
 
 ## Accuracy in detail
 
@@ -63,11 +64,11 @@ VOC 07 test
 
 KITTI val
 
-| Num | Models    | Car   | Pedestrian | Cyclist | All   |
-|:---:|:---------:|:-----:|:----------:|:-------:|:-----:|
-| 9   | VGG16     | 28.0  | 32.8       | 23.7    | 46.9  |
-| 10  | ResNet50  | -     | -          | -       | -     |
-
+| Num | Models    | Pedestrian | Cyclist | Car   | All   |
+|:---:|:---------:|:----------:|:-------:|:-----:|:-----:|
+| 9   | VGG16     | 32.8       | 23.7    | 28.0  | 46.9  |
+| 10  | ResNet50  | 30.1       | 20.7    | 25.4  | 44.1  |
+| 11  | VGG16     | 32.6       | 23.3    | 27.6  | 46.9  |
 
 ## Tips
  * If you don't want to terminate a process while you logged out for ssh session, use ```nohup``` command and ```&```.

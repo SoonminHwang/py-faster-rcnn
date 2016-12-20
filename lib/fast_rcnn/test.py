@@ -19,6 +19,8 @@ import cPickle
 from utils.blob import im_list_to_blob
 import os
 
+CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
+
 def _get_image_blob(im):
     """Converts an image into a network input.
 
@@ -287,9 +289,35 @@ def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
               .format(i + 1, num_images, _t['im_detect'].average_time,
                       _t['misc'].average_time)
 
+        # Store KITTI-style results
+        fileNm = os.path.basename(imdb.image_path_at(i)).split('.')[0] + '.txt'
+        result_dir = os.path.join(output_dir, 'kitti-eval', 'data')
+        if not os.path.exists(result_dir): os.makedirs(result_dir)
+
+        with open( os.path.join(result_dir, fileNm), 'w') as fp:
+            for j in xrange(1, imdb.num_classes):                
+                dets = all_boxes[j]
+                for det in dets:
+                    if len(det) == 0: continue
+                    try:
+                        resStr = '{:s} -1 -1 -10 '.format(CLASSES[j])                                
+                        resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(det[0][0],det[0][1],det[0][2],det[0][3])    # x1 y1 x2 y2
+                        resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(det[0][4])
+                        fp.write( resStr )
+                    except:
+                        import pdb
+                        pdb.set_trace()
+
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:
         cPickle.dump(all_boxes, f, cPickle.HIGHEST_PROTOCOL)
 
-    print 'Evaluating detections'
-    imdb.evaluate_detections(all_boxes, output_dir)
+    #print 'Evaluating detections'
+    #imdb.evaluate_detections(all_boxes, output_dir)
+
+    # Run KITTI evaluation script
+    os.system('cp {:s}/tools/kitti_evaluate_object {:s}/kitti-eval'.format(cfg.ROOT_DIR, output_dir))
+    os.chdir('{:s}/kitti-eval'.format(output_dir))
+    os.system('./kitti_evaluate_object')
+    os.chdir('{:s}'.format(cfg.ROOT_DIR))
+

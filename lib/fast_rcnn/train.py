@@ -23,7 +23,7 @@ class SolverWrapper(object):
     use to unnormalize the learned bounding-box regression weights.
     """
 
-    def __init__(self, solver_prototxt, roidb, output_dir,
+    def __init__(self, solver_prototxt, roidb_train, roidb_val, output_dir,
                  pretrained_model=None):
         """Initialize the SolverWrapper."""
         self.output_dir = output_dir
@@ -37,7 +37,7 @@ class SolverWrapper(object):
         if cfg.TRAIN.BBOX_REG:
             print 'Computing bounding-box regression targets...'
             self.bbox_means, self.bbox_stds = \
-                    rdl_roidb.add_bbox_regression_targets(roidb)
+                    rdl_roidb.add_bbox_regression_targets(roidb_train)
             print 'done'
 
         self.solver = caffe.SGDSolver(solver_prototxt)
@@ -45,12 +45,14 @@ class SolverWrapper(object):
             print ('Loading pretrained model '
                    'weights from {:s}').format(pretrained_model)
             self.solver.net.copy_from(pretrained_model)
+            self.solver.test_nets[0].copy_from(pretrained_model)
 
         self.solver_param = caffe_pb2.SolverParameter()
         with open(solver_prototxt, 'rt') as f:
             pb2.text_format.Merge(f.read(), self.solver_param)
 
-        self.solver.net.layers[0].set_roidb(roidb)
+        self.solver.net.layers[0].set_roidb(roidb_train)
+        self.solver.test_nets[0].layers[0].set_roidb(roidb_val)
 
     def snapshot(self):
         """Take a snapshot of the network after unnormalizing the learned
@@ -148,12 +150,14 @@ def filter_roidb(roidb):
                                                        num, num_after)
     return filtered_roidb
 
-def train_net(solver_prototxt, roidb, output_dir,
+def train_net(solver_prototxt, roidb_train, roidb_val, output_dir,
               pretrained_model=None, max_iters=40000):
     """Train a Fast R-CNN network."""
 
-    roidb = filter_roidb(roidb)
-    sw = SolverWrapper(solver_prototxt, roidb, output_dir,
+    roidb_train = filter_roidb(roidb_train)
+    roidb_val = filter_roidb(roidb_val)
+
+    sw = SolverWrapper(solver_prototxt, roidb_train, roidb_val, output_dir,
                        pretrained_model=pretrained_model)
 
     print 'Solving...'

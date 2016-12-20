@@ -33,7 +33,7 @@ VOC_CLASSES = ('__background__',
            'cow', 'diningtable', 'dog', 'horse',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
-KITTI_CLASSES = ('__background__', 'car', 'pedestrian', 'cyclist')
+KITTI_CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
 
 DATASETS = {'kitti': KITTI_CLASSES, 'voc': VOC_CLASSES}
 
@@ -75,11 +75,11 @@ def vis_detections(im, class_name, dets, thresh=0.5):
     plt.show()
 
 
-def demo(net, image_name, conf_thres, nms_thres):
+def demo(net, image_name, conf_thres, nms_thres, resDir):
     """Detect object classes in an image using pre-computed object proposals."""
 
     # Load the demo image
-    im_file = os.path.join(cfg.DATA_DIR, 'demo', image_name)
+    im_file = image_name
     im = cv2.imread(im_file)
 
     # Detect all object classes and regress object bounds
@@ -90,6 +90,11 @@ def demo(net, image_name, conf_thres, nms_thres):
     print ('Detection took {:.3f}s for '
            '{:d} object proposals').format(timer.total_time, boxes.shape[0])
 
+    #fp = open( os.path.join(cfg.DATA_DIR, 'demo', image_name.split('.')[0]+'.txt'), 'w' )
+    fp = open( os.path.join(resDir, os.path.basename(image_name).split('.')[0]+'.txt'), 'w' )
+
+    results = np.zeros((0, 6), dtype=np.float32)
+
     # Visualize detections for each class
     for cls_ind, cls in enumerate(CLASSES[1:]):
         cls_ind += 1 # because we skipped background
@@ -99,8 +104,38 @@ def demo(net, image_name, conf_thres, nms_thres):
                           cls_scores[:, np.newaxis])).astype(np.float32)
         keep = nms(dets, nms_thres)
         dets = dets[keep, :]
-        vis_detections(im, cls, dets, thresh=conf_thres)
-        plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + image_name))
+
+	#import pdb
+	#pdb.set_trace()
+
+	results = np.vstack( (results, np.insert(dets, 0, cls_ind, axis=1)) )
+	#results.append({'cls':cls,'dets':dets})
+	#res = np.hstack((np.repeat(np.asarray(cls_ind), len(dets), axis=0), dets))
+	#results = np.vstack((results, ))
+	#for d in dets:
+  	#    fp.write( '{:s} {:.2f} {:.2f} {:.2f} {:.2f} {:.4f}\n'.format(cls, d[0], d[1], d[2], d[3], d[4]) )
+
+        #vis_detections(im, cls, dets, thresh=conf_thres)
+        #plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + image_name))
+
+    print('# of results: {}'.format(len(results)))
+
+    #import pdb
+    #pdb.set_trace()
+    idx = np.argsort(results[:,-1])
+    results = results[idx[::-1],:]
+    #results = np.sort(results, axis=-1)[-1:0:-1, :]
+    #results = results[-1:0:-1, :]
+
+    for res in results:
+	resStr = '{:s} '.format(CLASSES[int(res[0])])
+	resStr += '-1 -1 -10 ' # Default values for truncation, occlusion, alpha
+	resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(
+		res[1],res[2],res[3],res[4])	# x1 y1 x2 y2
+	resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(res[5])
+	fp.write( resStr )
+
+    fp.close()
 
 def parse_args():
     """Parse input arguments."""
@@ -119,6 +154,10 @@ def parse_args():
                         default=CONF_THRESH, type=float)
     parser.add_argument('--nms_thres', dest='nms_thres', help='NMS threshold', 
                         default=NMS_THRESH, type=float)
+    parser.add_argument('--method', dest='method_name', help='Algorithm name', type=str)
+    parser.add_argument('--evalDir', dest='eval_dir', 
+			help='For evaluation, please specify evaluation directory',
+			default='', type=str)
 
     args = parser.parse_args()
 
@@ -161,10 +200,29 @@ if __name__ == '__main__':
     #im_names = ['000456.jpg', '000542.jpg', '001150.jpg',
     #            '001763.jpg', '004545.jpg']
     #            'KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png' ] # KITTI Test set
-    im_names = ['KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png' ] # KITTI Test set]
-    for im_name in im_names:
-        print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-        print 'Demo for data/demo/{}'.format(im_name)
-        demo(net, im_name, args.conf_thres, args.nms_thres)
+
+    import datetime
+    nowStr = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%Mm')
+    resDir = os.path.join(cfg.DATA_DIR, 'kitti', 'evaluation', 'results', nowStr + '_' + args.method_name)
+    if not os.path.exists(resDir):
+        os.makedirs( resDir )
+
+    if args.eval_dir is not '':
+	    import glob
+	    im_names = glob.glob( os.path.join(args.eval_dir, '*.png') )
+	    print( 'Get test images from {}'.format(args.eval_dir) )
+
+	    for im_name in im_names:
+		demo(net, im_name, args.conf_thres, args.nms_thres, resDir)
+    else:
+
+        im_names = ['KITTI_000017.png']
+        #im_names = ['KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png',
+        #		'KITTI_000017.png', 'KITTI_000031.png', 'KITTI_000040.png' ] # KITTI Test set]
+        for im_name in im_names:
+            print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+            print 'Demo for data/demo/{}'.format(im_name)
+	    im_name = os.path.join( cfg.DATA_DIR, 'demo', im_name )
+            demo(net, im_name, args.conf_thres, args.nms_thres, resDir)
      
     #plt.show()
