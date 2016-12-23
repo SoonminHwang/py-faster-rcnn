@@ -33,7 +33,8 @@ case $DATASET in
     TRAIN_IMDB="kitti_2012_train"
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
-    ITERS=70000
+    #ITERS=30000
+    ITERS=120000
     ;;
   voc_0712)
     TRAIN_IMDB="voc_2007_trainval+voc_2012_trainval"

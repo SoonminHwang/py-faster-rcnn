@@ -305,8 +305,24 @@ def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
                         resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(det[0][4])
                         fp.write( resStr )
                     except:
-                        import pdb
-                        pdb.set_trace()
+                        from IPython import embed
+                        embed()
+
+    import seaborn as sns
+    sns.set_style("white")    
+
+    import matplotlib.pyplot as plt
+
+    for j in xrange(1, imdb.num_classes):
+        scores = np.array([bbs[0][4] for bbs in all_boxes[j] if len(bbs) is not 0])
+
+        plt.figure()
+        sns.distplot(scores)
+        plt.title('Detected scores for class [{}]'.format(CLASSES[j]))
+        plt.savefig('Score_distribution_for_{}.jpg'.format(CLASSES[j]))
+
+
+    
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

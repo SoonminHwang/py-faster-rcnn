@@ -34,6 +34,17 @@ import numpy as np
 #       [ -79., -167.,   96.,  184.],
 #       [-167., -343.,  184.,  360.]])
 
+
+
+# For KITTI dataset
+KITTI_ANCHORS = \
+    np.array([[ -62.42771664,  -33.19999781,   62.42771664,   33.19999781],    \
+              [ -16.22978976,  -11.76532029,   16.22978976,   11.76532029],    \
+              [-123.43349337,  -74.67653236,  123.43349337,   74.67653236],    \
+              [  -9.23430044,  -25.01646326,    9.23430044,   25.01646326],    \
+              [ -31.48056598,  -19.69764308,   31.48056598,   19.69764308],    \
+              [ -28.47934774,  -65.13425048,   28.47934774,   65.13425048]])
+
 def generate_anchors(base_size=16, ratios=[0.5, 1, 2],
                      scales=2**np.arange(3, 6)):
     """
@@ -46,6 +57,14 @@ def generate_anchors(base_size=16, ratios=[0.5, 1, 2],
     anchors = np.vstack([_scale_enum(ratio_anchors[i, :], scales)
                          for i in xrange(ratio_anchors.shape[0])])
     return anchors
+
+def generate_anchors2(base_size=16, ratios=[], scales=[]):
+    """
+    Generate anchor (reference) windows by enumerating aspect ratios X
+    scales wrt a reference (0, 0, 15, 15) window.
+    """    
+    
+    return KITTI_ANCHORS
 
 def _whctrs(anchor):
     """
@@ -89,7 +108,7 @@ def _scale_enum(anchor, scales):
     """
     Enumerate a set of anchors for each scale wrt an anchor.
     """
-
+    
     w, h, x_ctr, y_ctr = _whctrs(anchor)
     ws = w * scales
     hs = h * scales
@@ -99,7 +118,12 @@ def _scale_enum(anchor, scales):
 if __name__ == '__main__':
     import time
     t = time.time()
-    a = generate_anchors()
+
+    # KITTI, data-driven
+    ratios = [0.5, 0.5, 0.75, 0.75, 2.5, 2.5]
+    scales = [4.0, 1.0, 12.0, 0.75, 10.0, 10.0]
+
+    a = generate_anchors2()
     print time.time() - t
     print a
     from IPython import embed; embed()

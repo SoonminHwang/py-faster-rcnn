@@ -285,6 +285,7 @@ def drawPlot(ax, dict_list, xLabel, yLabel, avg_step, clr, prop):
 
     ax.plot(xx, yy, clr, alpha=prop['alpha'])
     ax.plot(xx[::avg_step], yy_avg, clr, label=prop['label'])
+    ax.set_yscale('log')
 
 def main():
     args = parse_args()
@@ -305,18 +306,18 @@ def main():
     axes = axes.flatten()
 
     for ii, term in enumerate(loss_term):
-	drawPlot(axes[ii], train_dict_list, 'NumIters', term, 40, 'b-', {'alpha':0.3, 'label':'Train'})
-	try:	
-	    drawPlot(axes[ii], test_dict_list,  'NumIters', term, 4,  'r-', {'alpha':0.3, 'label':'Test'})
-	except:
-	    print('Cannot find test loss')
+        drawPlot(axes[ii], train_dict_list, 'NumIters', term, 40, 'b-', {'alpha':0.3, 'label':'Train'})
+        try:	
+            drawPlot(axes[ii], test_dict_list,  'NumIters', term, 2,  'r-', {'alpha':0.3, 'label':'Test'})
+        except:
+           print('Cannot find test loss')
 
-	axes[ii].set_title(term)
-	axes[ii].set_xlabel('Iteration')
-	axes[ii].set_ylabel('Loss')
-	xticklabel = [ '{}k'.format(int(int(xl)/1000)) for xl in axes[ii].get_xticks().tolist()[1:] ]
-	axes[ii].set_xticklabels( [''] + xticklabel )
-	axes[ii].legend()	
+        axes[ii].set_title(term)
+        axes[ii].set_xlabel('Iteration')
+        axes[ii].set_ylabel('Loss')
+        xticklabel = [ '{}k'.format(int(int(xl)/1000)) for xl in axes[ii].get_xticks().tolist()[1:] ]
+        axes[ii].set_xticklabels( [''] + xticklabel )
+        axes[ii].legend()	
 
 
     sns.set_style("white")

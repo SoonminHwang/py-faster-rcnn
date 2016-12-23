@@ -11,6 +11,7 @@
 
 using namespace std;
 
+// g++ -O3 -DNDEBUG -o evaluate_object evaluate_object.cpp
 /*=======================================================================
 STATIC EVALUATION PARAMETERS
 =======================================================================*/
@@ -255,6 +256,8 @@ vector<double> getThresholds(vector<double> &v, double n_groundtruth){
     // left recall is the best approximation, so use this and goto next recall step for approximation
     recall = l_recall;
 
+    std::cout << "Thresholds: " << v[i] << std::endl << std::flush;
+
     // the next recall step was reached
     t.push_back(v[i]);
     current_recall += 1.0/(N_SAMPLE_PTS-1.0);
@@ -283,7 +286,6 @@ void cleanData(CLASSES current_class, const vector<tGroundtruth> &gt, const vect
       valid_class = 0;
     else if(!strcasecmp(CLASS_NAMES[current_class].c_str(), "Car") && !strcasecmp("Van", gt[i].box.type.c_str()))
       valid_class = 0;
-
     // classes not used for evaluation
     else
       valid_class = -1;
@@ -380,6 +382,9 @@ tPrData computeStatistics(CLASSES current_class, const vector<tGroundtruth> &gt,
 
       // find the maximum score for the candidates and get idx of respective detection
       double overlap = boxoverlap(det[j].box, gt[i].box);
+
+      //std::cout << "Current class : " << CLASS_NAMES[current_class] <<
+      //  " [gt (" << i << "), det (" << j << ")] overlap: " << overlap << std::endl << std::flush;
 
       // for computing recall thresholds, the candidate with highest score is considered
       if(!compute_fp && overlap>MIN_OVERLAP[current_class] && det[j].thresh>valid_detection){
@@ -507,6 +512,7 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
   //std::cout << "len(gt) = " << groundtruth.size() << std::endl << std::flush;
   //std::cout << "len(det) = " << detections.size() << std::endl << std::flush;
 
+  int32_t tp=0, fp=0, fn=0;
 
   // for all test images do
   for (int32_t i=START_TESTIMAGES; i<END_TESTIMAGES; i++){
@@ -529,10 +535,17 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
     tPrData pr_tmp = tPrData();
     pr_tmp = computeStatistics(current_class, groundtruth[i], detections[i], dc, i_gt, i_det, false);
 
+    tp += pr_tmp.tp;
+    fp += pr_tmp.fp;
+    fn += pr_tmp.fn;
+
     // add detection scores to vector over all images
     for(int32_t j=0; j<pr_tmp.v.size(); j++)
       v.push_back(pr_tmp.v[j]);
   }
+
+  //std::cout << "Current class : " << CLASS_NAMES[current_class] << 
+  //    " / TP: " << tp << ", FP: " << fp << ", FN: " << fn << std::endl << std::flush;
 
   // get scores that must be evaluated for recall discretization
   thresholds = getThresholds(v, n_gt);
@@ -554,7 +567,10 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
       pr[t].fn += tmp.fn;
       if(tmp.similarity!=-1)
         pr[t].similarity += tmp.similarity;
-    }
+
+      std::cout << "[" << CLASS_NAMES[current_class] << "] tp: " << pr[t].tp << ", fp: " << pr[t].fp
+      << ", fn: " << pr[t].fn << ", threshold: " << thresholds[t] << std::endl << std::flush;
+    }    
   }
 
   // compute recall, precision and AOS
@@ -664,7 +680,7 @@ bool eval(string result_sha,Mail* mail){
 
   // holds wether orientation similarity shall be computed (might be set to false while loading detections)
   // and which labels where provided by this submission
-  bool compute_aos=false, eval_car=true, eval_pedestrian=true, eval_cyclist=true;
+  bool compute_aos=false, eval_car=true, eval_pedestrian=false, eval_cyclist=false;
 
   // for all images read groundtruth and detections
   mail->msg("Loading detections...");
@@ -695,7 +711,7 @@ bool eval(string result_sha,Mail* mail){
       return false;
     }
   }
-  mail->msg("  done."); 
+  mail->msg("  done!!"); 
 
   // holds pointers for result files
   FILE *fp_det=0, *fp_ori=0;
@@ -707,7 +723,7 @@ bool eval(string result_sha,Mail* mail){
       fp_ori = fopen((result_dir + "/stats_" + CLASS_NAMES[CAR] + "_orientation.txt").c_str(),"w");
     vector<double> precision[3], aos[3];
     
-    std::cout << "x" << std::flush;
+    //std::cout << "x" << std::flush;
 
     if(   !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[0],aos[0],EASY)
        || !eval_class(fp_det,fp_ori,CAR,groundtruth,detections,compute_aos,precision[1],aos[1],MODERATE)

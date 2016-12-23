@@ -3,7 +3,8 @@ net: "models/kitti/ResNet50/faster_rcnn_end2end/trainval.prototxt"
 base_lr: 0.001
 lr_policy: "step"
 gamma: 0.1
-stepsize: 50000
+#stepsize: 50000
+stepsize: 12000
 display: 20
 average_loss: 100
 # iter_size: 1
@@ -20,7 +21,7 @@ iter_size: 2
 # --> test at every 0.1 epoch, check 2.5% test samples
 
 # The number of iterations for each test net.
-test_iter: 400
+test_iter: 1000
 # The number of iterations between two testing phases.
-test_interval: 100
+test_interval: 1000
 test_compute_loss: true

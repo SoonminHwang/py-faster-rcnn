@@ -48,9 +48,12 @@ class kitti(imdb):
         # COCO specific config options
         self.config = {'top_k' : 2000,
                        'use_salt' : True,
-                       'cleanup' : True,
-                       'crowd_thresh' : 0.7,
-                       'min_size' : 2}
+                       'cleanup' : True,                       
+                       'min_size' : 2,
+                       'areaRng' : [1000, np.inf], # Min. 20 x 50 or 25 x 40
+                       'occLevel' : [0, 1],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
+                       'truncRng' : [0, 0.1]     # Only non-truncated
+                      }
         # name, paths
         self._year = year
         self._image_set = image_set

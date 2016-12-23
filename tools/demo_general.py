@@ -104,38 +104,32 @@ def demo(net, image_name, conf_thres, nms_thres, resDir):
                           cls_scores[:, np.newaxis])).astype(np.float32)
         keep = nms(dets, nms_thres)
         dets = dets[keep, :]
+        results = np.vstack( (results, np.insert(dets, 0, cls_ind, axis=1)) )
 
-	#import pdb
-	#pdb.set_trace()
+        vis_detections(im, cls, dets, thresh=conf_thres)
 
-	results = np.vstack( (results, np.insert(dets, 0, cls_ind, axis=1)) )
-	#results.append({'cls':cls,'dets':dets})
-	#res = np.hstack((np.repeat(np.asarray(cls_ind), len(dets), axis=0), dets))
-	#results = np.vstack((results, ))
-	#for d in dets:
-  	#    fp.write( '{:s} {:.2f} {:.2f} {:.2f} {:.2f} {:.4f}\n'.format(cls, d[0], d[1], d[2], d[3], d[4]) )
-
-        #vis_detections(im, cls, dets, thresh=conf_thres)
-        #plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + image_name))
+    plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + image_name))
 
     print('# of results: {}'.format(len(results)))
+    
+    return 
 
     #import pdb
     #pdb.set_trace()
-    idx = np.argsort(results[:,-1])
-    results = results[idx[::-1],:]
+#    idx = np.argsort(results[:,-1])
+#    results = results[idx[::-1],:]
     #results = np.sort(results, axis=-1)[-1:0:-1, :]
     #results = results[-1:0:-1, :]
 
-    for res in results:
-	resStr = '{:s} '.format(CLASSES[int(res[0])])
-	resStr += '-1 -1 -10 ' # Default values for truncation, occlusion, alpha
-	resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(
-		res[1],res[2],res[3],res[4])	# x1 y1 x2 y2
-	resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(res[5])
-	fp.write( resStr )
+#    for res in results:
+#	resStr = '{:s} '.format(CLASSES[int(res[0])])
+#	resStr += '-1 -1 -10 ' # Default values for truncation, occlusion, alpha
+#	resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(
+#		res[1],res[2],res[3],res[4])	# x1 y1 x2 y2
+#	resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(res[5])
+#	fp.write( resStr )
 
-    fp.close()
+#    fp.close()
 
 def parse_args():
     """Parse input arguments."""
@@ -215,14 +209,13 @@ if __name__ == '__main__':
 	    for im_name in im_names:
 		demo(net, im_name, args.conf_thres, args.nms_thres, resDir)
     else:
-
         im_names = ['KITTI_000017.png']
         #im_names = ['KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png',
-        #		'KITTI_000017.png', 'KITTI_000031.png', 'KITTI_000040.png' ] # KITTI Test set]
+       	#	'KITTI_000017.png', 'KITTI_000031.png', 'KITTI_000040.png' ] # KITTI Test set]
         for im_name in im_names:
             print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
             print 'Demo for data/demo/{}'.format(im_name)
-	    im_name = os.path.join( cfg.DATA_DIR, 'demo', im_name )
+            im_name = os.path.join( cfg.DATA_DIR, 'demo', im_name )
             demo(net, im_name, args.conf_thres, args.nms_thres, resDir)
      
     #plt.show()
