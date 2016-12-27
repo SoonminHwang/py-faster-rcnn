@@ -31,7 +31,6 @@ cfg = __C
 #
 # Training options
 #
-
 __C.TRAIN = edict()
 
 # Scales to use during training (can list multiple scales)
@@ -194,7 +193,7 @@ __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 __C.DATA_DIR = osp.abspath(osp.join(__C.ROOT_DIR, 'data'))
 
 # Model directory
-__C.MODELS_DIR = osp.abspath(osp.join(__C.ROOT_DIR, 'models', 'pascal_voc'))
+__C.MODELS_DIR = osp.abspath(osp.join(__C.ROOT_DIR, 'models'))
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'
@@ -211,6 +210,9 @@ __C.GPU_ID = 0
 # Use additional information
 __C.USE_THERMAL = False
 __C.USE_DEPTH = False
+
+# Canonical image size, for KITTI, KAIST etc.
+__C.IMAGE_SIZE = np.array([375, 1241])
 
 def get_output_dir(imdb, net=None):
     """Return the directory where experimental artifacts are placed.

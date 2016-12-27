@@ -294,6 +294,8 @@ def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
         result_dir = os.path.join(output_dir, 'kitti-eval', 'data')
         if not os.path.exists(result_dir): os.makedirs(result_dir)
 
+
+
         with open( os.path.join(result_dir, fileNm), 'w') as fp:
             for j in xrange(1, imdb.num_classes):                
                 dets = all_boxes[j]
@@ -302,7 +304,7 @@ def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
                     try:
                         resStr = '{:s} -1 -1 -10 '.format(CLASSES[j])                                
                         resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(det[0][0],det[0][1],det[0][2],det[0][3])    # x1 y1 x2 y2
-                        resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(det[0][4])
+                        resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.4f}\n'.format(det[0][4])
                         fp.write( resStr )
                     except:
                         from IPython import embed

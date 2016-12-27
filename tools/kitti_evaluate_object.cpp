@@ -7,8 +7,50 @@
 #include <strings.h>
 #include <assert.h>
 
-#include "mail.h"
+//#include "mail.h"
 
+#include <stdarg.h>
+
+class Mail {
+
+public:
+
+  Mail (std::string email = "") {
+    if (email.compare("")) {
+      //mail = popen("/usr/lib/sendmail -t -f noreply@cvlibs.net","w");
+      mail = popen("/usr/lib/sendmail -t -f smhwang@rcv.kaist.ac.kr","w");
+      fprintf(mail,"To: %s\n", email.c_str());
+      fprintf(mail,"From: smhwang@rcv.kaist.ac.kr\n");
+      fprintf(mail,"Subject: KITTI Evaluation Benchmark (validation)\n");
+      fprintf(mail,"\n\n");
+    } else {
+      mail = 0;
+    }
+  }
+  
+  ~Mail() {
+    if (mail) {
+      pclose(mail);
+    }
+  }
+  
+  void msg (const char *format, ...) {
+    va_list args;
+    va_start(args,format);
+    if (mail) {
+      vfprintf(mail,format,args);
+      fprintf(mail,"\n");
+    }
+    vprintf(format,args);
+    printf("\n");
+    va_end(args);
+  }
+    
+private:
+
+  FILE *mail;
+  
+};
 using namespace std;
 
 // g++ -O3 -DNDEBUG -o evaluate_object evaluate_object.cpp
@@ -42,9 +84,9 @@ const double N_SAMPLE_PTS = 41;
 
 // initialize class names
 void initGlobals () {
-  CLASS_NAMES.push_back("car");
-  CLASS_NAMES.push_back("pedestrian");
-  CLASS_NAMES.push_back("cyclist");
+  CLASS_NAMES.push_back("Car");
+  CLASS_NAMES.push_back("Pedestrian");
+  CLASS_NAMES.push_back("Cyclist");
 }
 
 /*=======================================================================
@@ -129,11 +171,11 @@ vector<tDetection> loadDetections(string file_name, bool &compute_aos, bool &eva
         compute_aos = false;
 
       // a class is only evaluated if it is detected at least once
-      if(!eval_car && !strcasecmp(d.box.type.c_str(), "car"))
+      if(!eval_car && !strcasecmp(d.box.type.c_str(), "Car"))
         eval_car = true;
-      if(!eval_pedestrian && !strcasecmp(d.box.type.c_str(), "pedestrian"))
+      if(!eval_pedestrian && !strcasecmp(d.box.type.c_str(), "Pedestrian"))
         eval_pedestrian = true;
-      if(!eval_cyclist && !strcasecmp(d.box.type.c_str(), "cyclist"))
+      if(!eval_cyclist && !strcasecmp(d.box.type.c_str(), "Cyclist"))
         eval_cyclist = true;
     }
   }
@@ -568,8 +610,8 @@ bool eval_class (FILE *fp_det, FILE *fp_ori, CLASSES current_class,const vector<
       if(tmp.similarity!=-1)
         pr[t].similarity += tmp.similarity;
 
-      std::cout << "[" << CLASS_NAMES[current_class] << "] tp: " << pr[t].tp << ", fp: " << pr[t].fp
-      << ", fn: " << pr[t].fn << ", threshold: " << thresholds[t] << std::endl << std::flush;
+      //std::cout << "[" << CLASS_NAMES[current_class] << "] tp: " << pr[t].tp << ", fp: " << pr[t].fp
+      //<< ", fn: " << pr[t].fn << ", threshold: " << thresholds[t] << std::endl << std::flush;
     }    
   }
 
@@ -693,7 +735,7 @@ bool eval(string result_sha,Mail* mail){
     // read ground truth and result poses
     bool gt_success,det_success;
     vector<tGroundtruth> gt   = loadGroundtruth(gt_dir + "/" + file_name,gt_success);
-    vector<tDetection>   det  = loadDetections(result_dir + "/data/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist,det_success);
+    vector<tDetection>   det  = loadDetections(result_dir + "/" + file_name, compute_aos, eval_car, eval_pedestrian, eval_cyclist,det_success);
 
     //std::cout << "len(gt) = " << gt.size() << std::endl << std::flush;
     //std::cout << "len(det) = " << det.size() << std::endl << std::flush;

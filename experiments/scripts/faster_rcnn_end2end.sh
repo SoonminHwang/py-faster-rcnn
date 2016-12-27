@@ -27,25 +27,29 @@ case $DATASET in
     TRAIN_IMDB="kitti_2012_trainval"
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end_kitti.yml"
     ITERS=100000
     ;;
   kitti)
     TRAIN_IMDB="kitti_2012_train"
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end_kitti.yml"
     #ITERS=30000
-    ITERS=120000
+    ITERS=150000
     ;;
   voc_0712)
     TRAIN_IMDB="voc_2007_trainval+voc_2012_trainval"
     TEST_IMDB="voc_2012_test"
     PT_DIR="pascal_voc"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end.yml"
     ITERS=100000
     ;;
   pascal_voc)
     TRAIN_IMDB="voc_2007_trainval"
     TEST_IMDB="voc_2007_test"
     PT_DIR="pascal_voc"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end.yml"
     ITERS=70000
     ;;
   coco14_trainval)
@@ -55,6 +59,7 @@ case $DATASET in
     TRAIN_IMDB="coco_2014_train+coco_2014_val"
     TEST_IMDB="coco_2015_test"
     PT_DIR="coco14_trainval"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end.yml"
     ITERS=70000
     ;;
   coco)
@@ -64,6 +69,7 @@ case $DATASET in
     TRAIN_IMDB="coco_2014_train"
     TEST_IMDB="coco_2014_minival"
     PT_DIR="coco"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end.yml"
     ITERS=490000
     ;;
   *)
@@ -82,16 +88,23 @@ time ./tools/train_net.py --gpu ${GPU_ID} \
   --imdb_train ${TRAIN_IMDB} \
   --imdb_val ${TEST_IMDB} \
   --iters ${ITERS} \
-  --cfg experiments/cfgs/faster_rcnn_end2end.yml \
+  --cfg ${CONFIG} \
   ${EXTRA_ARGS}
 
 set +x
 NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
 set -x
 
-time ./tools/test_net.py --gpu ${GPU_ID} \
-  --def models/${PT_DIR}/${NET}/faster_rcnn_end2end/test.prototxt \
-  --net ${NET_FINAL} \
-  --imdb ${TEST_IMDB} \
-  --cfg experiments/cfgs/faster_rcnn_end2end.yml \
-  ${EXTRA_ARGS}
+
+case $DATASET in
+  kitti)
+    time ./tools/eval_kitti.py --gpu ${GPU_ID} \
+      --net ${NET} \
+      --iter ${ITERS}
+  *)
+    time ./tools/test_net.py --gpu ${GPU_ID} \
+      --def models/${PT_DIR}/${NET}/faster_rcnn_end2end/test.prototxt \
+      --net ${NET_FINAL} \
+      --imdb ${TEST_IMDB} \
+      --cfg ${CONFIG} \
+      ${EXTRA_ARGS}

@@ -53,7 +53,7 @@ class SolverWrapper(object):
 
         self.solver.net.layers[0].set_roidb(roidb_train)
         self.solver.test_nets[0].layers[0].set_roidb(roidb_val)
-
+        
     def snapshot(self):
         """Take a snapshot of the network after unnormalizing the learned
         bounding-box regression weights. This enables easy use at test-time.

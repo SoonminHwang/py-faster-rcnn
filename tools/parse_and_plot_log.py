@@ -306,9 +306,9 @@ def main():
     axes = axes.flatten()
 
     for ii, term in enumerate(loss_term):
-        drawPlot(axes[ii], train_dict_list, 'NumIters', term, 40, 'b-', {'alpha':0.3, 'label':'Train'})
+        drawPlot(axes[ii], train_dict_list, 'NumIters', term, 20, 'b-', {'alpha':0.3, 'label':'Train'})
         try:	
-            drawPlot(axes[ii], test_dict_list,  'NumIters', term, 2,  'r-', {'alpha':0.3, 'label':'Test'})
+            drawPlot(axes[ii], test_dict_list,  'NumIters', term, 4,  'r-', {'alpha':0.3, 'label':'Test'})
         except:
            print('Cannot find test loss')
 

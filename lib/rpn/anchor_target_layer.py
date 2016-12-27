@@ -130,16 +130,21 @@ class AnchorTargetLayer(caffe.Layer):
 
         # overlaps between the anchors and the gt boxes
         # overlaps (ex, gt)
-        overlaps = bbox_overlaps(
-            np.ascontiguousarray(anchors, dtype=np.float),
-            np.ascontiguousarray(gt_boxes, dtype=np.float))
-        argmax_overlaps = overlaps.argmax(axis=1)
-        max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
-        gt_argmax_overlaps = overlaps.argmax(axis=0)
-        gt_max_overlaps = overlaps[gt_argmax_overlaps,
-                                   np.arange(overlaps.shape[1])]
-        gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
+        try:
+            overlaps = bbox_overlaps(
+                np.ascontiguousarray(anchors, dtype=np.float),
+                np.ascontiguousarray(gt_boxes, dtype=np.float))
+            argmax_overlaps = overlaps.argmax(axis=1)
+            max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
+            gt_argmax_overlaps = overlaps.argmax(axis=0)
+            gt_max_overlaps = overlaps[gt_argmax_overlaps,
+                                       np.arange(overlaps.shape[1])]
+            gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
 
+        except:
+            import pdb
+            pdb.set_trace()
+            
         if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             # assign bg labels first so that positive labels can clobber them
             labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0

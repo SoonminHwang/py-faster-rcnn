@@ -29,7 +29,7 @@ iter_size: 2
 
 
 # The number of iterations for each test net.
-test_iter: 4000
+test_iter: 500
 # The number of iterations between two testing phases.
-test_interval: 4000
+test_interval: 500
 test_compute_loss: true

@@ -26,33 +26,30 @@ import numpy as np
 import scipy.io as sio
 import caffe, os, sys, cv2
 import argparse
+from utils.cython_bbox import bbox_overlaps
 
-VOC_CLASSES = ('__background__',
-           'aeroplane', 'bicycle', 'bird', 'boat',
-           'bottle', 'bus', 'car', 'cat', 'chair',
-           'cow', 'diningtable', 'dog', 'horse',
-           'motorbike', 'person', 'pottedplant',
-           'sheep', 'sofa', 'train', 'tvmonitor')
-KITTI_CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
-
-DATASETS = {'kitti': KITTI_CLASSES, 'voc': VOC_CLASSES}
+CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
 
 #CONF_THRESH = 0.8
 CONF_THRESH = 0.2
 NMS_THRESH = 0.3
 
-def vis_detections(im, class_name, dets, thresh=0.5):
-    """Draw detected bounding boxes."""
+def vis_detections(im, class_name, dets, ax, thresh=0.5):
+    """Draw detected bounding boxes."""    
+    im = im[:, :, (2, 1, 0)]
+    #fig, ax = plt.subplots(figsize=(12, 12))    
+
+    ax.imshow(im, aspect='equal')
+    ax.set_title(('{} detections with '
+                  'p({} | box) >= {:.2f}').format(class_name, class_name,
+                                                  thresh),
+                  fontsize=14)
+    ax.axis('off')
+
     inds = np.where(dets[:, -1] >= thresh)[0]
     if len(inds) == 0:
         return
 
-    im = im[:, :, (2, 1, 0)]
-    #fig, ax = plt.subplots(figsize=(12, 12))
-    ax = plt.gca()
-    plt.ion()
-
-    ax.imshow(im, aspect='equal')
     for i in inds:
         bbox = dets[i, :4]
         score = dets[i, -1]
@@ -64,21 +61,11 @@ def vis_detections(im, class_name, dets, thresh=0.5):
                           edgecolor='red', linewidth=3.5)
             )
         ax.text(bbox[0], bbox[1] - 2,
-                '{:s} {:.3f}'.format(class_name, score),
+                '{:.3f}'.format(score),
                 bbox=dict(facecolor='blue', alpha=0.5),
                 fontsize=14, color='white')
 
-    ax.set_title(('{} detections with '
-                  'p({} | box) >= {:.2f}').format(class_name, class_name,
-                                                  thresh),
-                  fontsize=14)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.draw()    
-    plt.show()
-    plt.pause(0.001)
-
-
+    
 def demo(net, image_name, conf_thres, nms_thres, resDir):
     """Detect object classes in an image using pre-computed object proposals."""
 
@@ -94,10 +81,15 @@ def demo(net, image_name, conf_thres, nms_thres, resDir):
     timer.toc()
     print ('Detection took {:.3f}s for '
            '{:d} object proposals').format(timer.total_time, boxes.shape[0])
+    
+    # Detections
+    dFig, dAx = plt.subplots(len(CLASSES)-1, 1, figsize=(15, 10))   
 
-    #fp = open( os.path.join(cfg.DATA_DIR, 'demo', image_name.split('.')[0]+'.txt'), 'w' )
+    plt.ion()
+    
+    plt.tight_layout()
+
     fp = open( os.path.join(resDir, os.path.basename(image_name).split('.')[0]+'.txt'), 'w' )
-
     results = np.zeros((0, 6), dtype=np.float32)
 
     # Visualize detections for each class
@@ -110,41 +102,108 @@ def demo(net, image_name, conf_thres, nms_thres, resDir):
         keep = nms(dets, nms_thres)
         dets = dets[keep, :]
         results = np.vstack( (results, np.insert(dets, 0, cls_ind, axis=1)) )
+        
+        vis_detections(im, cls, dets, dAx[cls_ind-1], thresh=conf_thres)        
 
-        plt.figure(cls_ind, figsize=(15, 10))
-        vis_detections(im, cls, dets, thresh=conf_thres)
-        plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[{}]'.format(CLASSES[cls_ind]) + fname))
 
+    # Save detections
+    resDir = os.path.join(cfg.DATA_DIR, 'demo', 'result')
+    if not os.path.exists(resDir):
+        os.makedirs( resDir )
     
+    with open( os.path.join(resDir, fname.split('.')[0] + '.txt'), 'w') as fp:        
+        for det in results:
+            if len(det) == 0: continue
+            try:
+                if det[5] < 0.01: continue
+                resStr = '{:s} -1 -1 -10 '.format(CLASSES[int(det[0])])                                
+                resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(det[1],det[2],det[3],det[4])    # x1 y1 x2 y2
+                resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.4f}\n'.format(det[5])
+                fp.write( resStr )
+            except:
+                from IPython import embed
+                embed()
+
+    import pdb
+
+    # Ground-truth
+    gFig, gAx = plt.subplots(len(CLASSES)-1, 1, figsize=(15, 10))
+
+    for ii in range(len(CLASSES)-1):
+        gAx[ii].imshow(im[:, :, (2, 1, 0)])
     
-    print('# of results: {}'.format(len(results)))
-    
+    annNm = os.path.dirname(im_file) + '/' + fname.split('.')[0] + '.txt'
+
+
     np.set_printoptions(precision=2)
 
+    annotations = []
+    with open(annNm, 'r') as f:
+        lines = f.readlines()
+        
+        for line in lines:
+            d = line.split(' ')
+            nums = [float(num) for num in d[1:]]
+            clsStr = d[0]
+            trunc, occ, alpha = nums[:3]
+            left, top, right, bottom = nums[3:7]            
+            #bbox    = [left, top, right-left+1, bottom-top+1]
+            bbox    = [left, top, right, bottom]
+            
+            cls_ind = [ind for ind, clsNm in enumerate(CLASSES[1:]) if clsStr == clsNm]            
+            annotations.append( bbox + cls_ind )
+
+    try:
+        for cls_ind in range(len(CLASSES)-1):
+            gt_boxes = np.asarray([box for box in annotations if box[-1] == cls_ind])
+            dt_boxes = results[results[:,0] == cls_ind+1, :]
+
+            if len(gt_boxes) == 0: continue
+
+            overlaps = bbox_overlaps( np.ascontiguousarray(gt_boxes, dtype=np.float), np.ascontiguousarray(dt_boxes[:,1:], dtype=np.float))
+            argmax_overlaps = overlaps.argmax(axis=1)
+            max_overlaps = overlaps[np.arange(len(gt_boxes)), argmax_overlaps]
+
+            gt_argmax_overlaps = overlaps.argmax(axis=0)
+            gt_max_overlaps = overlaps[gt_argmax_overlaps, np.arange(overlaps.shape[1])]
+            gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
+
+            for ii, gt_box in enumerate(gt_boxes):
+                if gt_max_overlaps[ii] >= 0.5:
+                    clr = 'r'
+                    ovlStr = '{:.2f}'.format(gt_max_overlaps[ii])
+                else:
+                    clr = 'b'
+                    ovlStr = ''
+
+                gAx[cls_ind].add_patch(
+                    plt.Rectangle( (gt_box[0], gt_box[1]), gt_box[2]-gt_box[0], gt_box[3]-gt_box[1], fill=False,
+                        edgecolor=clr, linewidth=3)
+                    )
+                gAx[cls_ind].text(gt_box[0], gt_box[1]-2, ovlStr, color='white', 
+                    bbox={'facecolor': clr, 'alpha':0.5})
+
+                #gAx[cls_ind].text(bbox[0], bbox[1]-2, '{:s}'.format(CLASSES[cls_ind+1]), color='white', 
+                    #bbox={'facecolor': clr, 'alpha':0.5})
+    except:
+        pdb.set_trace()
+
+    plt.show()
+    plt.draw()        
+    plt.pause(0.001)
+    plt.savefig(os.path.join(cfg.DATA_DIR, 'demo', '[Result]' + fname))
+                
     for ii in range(len(results)):
         print('[%d] %8.2f, %8.2f, %8.2f, %8.2f\t%.4f'%
             (results[ii][0], results[ii][1], results[ii][2], results[ii][3], results[ii][4], results[ii][5]))
 
+    print('# of results: {} (>= {:.2f}: {} detections)'.format(
+        len(results), conf_thres, len([1 for r in results if r[-1] >= conf_thres])))
+
     print('')
 
     raw_input("Press enter to continue")
-    
-    #import pdb
-    #pdb.set_trace()
-#    idx = np.argsort(results[:,-1])
-#    results = results[idx[::-1],:]
-    #results = np.sort(results, axis=-1)[-1:0:-1, :]
-    #results = results[-1:0:-1, :]
-
-#    for res in results:
-#	resStr = '{:s} '.format(CLASSES[int(res[0])])
-#	resStr += '-1 -1 -10 ' # Default values for truncation, occlusion, alpha
-#	resStr += ' {:.2f} {:.2f} {:.2f} {:.2f} '.format(
-#		res[1],res[2],res[3],res[4])	# x1 y1 x2 y2
-#	resStr += '-1 -1 -1 -1000 -1000 -1000 -10 {:.2f}\n'.format(res[5])
-#	fp.write( resStr )
-
-#    fp.close()
+       
 
 def parse_args():
     """Parse input arguments."""
@@ -155,9 +214,7 @@ def parse_args():
                         help='Use CPU mode (overrides --gpu)',
                         action='store_true')
     parser.add_argument('--net', dest='demo_net', help='Network to use [*.prototxt]')
-    parser.add_argument('--caffemodel', dest='caffemodel', help='Trained weights [*.caffemodel]')
-    parser.add_argument('--dataset', dest='dataset', help='Specify the trained dataset for category definition',
-                        choices=DATASETS.keys(), default='kitti')
+    parser.add_argument('--caffemodel', dest='caffemodel', help='Trained weights [*.caffemodel]')    
 
     parser.add_argument('--conf_thres', dest='conf_thres', help='Confidence threshold', 
                         default=CONF_THRESH, type=float)
@@ -181,8 +238,6 @@ if __name__ == '__main__':
     #                        'faster_rcnn_alt_opt', 'faster_rcnn_test.pt')
     #caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',
     #                          NETS[args.demo_net][1])
-
-    CLASSES = DATASETS[args.dataset]
 
     prototxt = args.demo_net
     caffemodel = args.caffemodel
@@ -225,8 +280,8 @@ if __name__ == '__main__':
 		demo(net, im_name, args.conf_thres, args.nms_thres, resDir)
     else:
         #im_names = ['KITTI_000017.png']
-        im_names = ['KITTI_003313.png', 'KITTI_000023.png', 'KITTI_000211.png', 'KITTI_001443.png',
-       		'KITTI_000017.png', 'KITTI_000031.png', 'KITTI_000040.png' ] # KITTI Test set]
+        im_names = ['KITTI_003683.png', 'KITTI_003684.png', 'KITTI_003686.png', 'KITTI_003687.png',
+       		'KITTI_003690.png', 'KITTI_003694.png', 'KITTI_003709.png' ] # KITTI Test set]
         for im_name in im_names:
             print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
             print 'Demo for data/demo/{}'.format(im_name)

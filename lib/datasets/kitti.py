@@ -17,7 +17,7 @@ import cPickle
 import json
 import uuid
 # COCO API
-from pycocotools.coco import COCO
+from pycocotools.kitti import KITTI
 from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as COCOmask
 
@@ -45,26 +45,31 @@ def _filter_crowd_proposals(roidb, crowd_thresh):
 class kitti(imdb):
     def __init__(self, image_set, year):
         imdb.__init__(self, 'kitti_' + year + '_' + image_set)
-        # COCO specific config options
+        # KITTI specific config options
         self.config = {'top_k' : 2000,
                        'use_salt' : True,
                        'cleanup' : True,                       
                        'min_size' : 2,
-                       'areaRng' : [1000, np.inf], # Min. 20 x 50 or 25 x 40
-                       'occLevel' : [0, 1],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
-                       'truncRng' : [0, 0.1]     # Only non-truncated
+                       'areaRng' : [100, np.inf], # Min. 20 x 50 or 25 x 40
+                       'occLevel' : [0, 1, 3],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
+                       'truncRng' : [0, 0.35]     # Only partially-truncated
                       }
         # name, paths
         self._year = year
         self._image_set = image_set
         self._data_path = osp.join(cfg.DATA_DIR, 'kitti')
-        # load COCO API, classes, class <-> id mappings
-        self._COCO = COCO(self._get_ann_file())
-        cats = self._COCO.loadCats(self._COCO.getCatIds())
-        self._classes = tuple(['__background__'] + [c['name'] for c in cats])
-        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
-        self._class_to_coco_cat_id = dict(zip([c['name'] for c in cats],
-                                              self._COCO.getCatIds()))
+        # load KITTI API, classes, class <-> id mappings
+        self._KITTI = KITTI(self._get_ann_file())
+
+        categories = ['Pedestrian', 'Car', 'Cyclist']
+        print '%s, %s, %s categories will be used.\n' % (categories[0], categories[1], categories[2])
+
+        cats = self._KITTI.loadCats(self._KITTI.getCatIds(catNms=categories))
+        self._classes = tuple(['__background__'] + [c['name'] for c in cats])        
+        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))        
+        self._class_to_kitti_cat_id = dict(zip([c['name'] for c in cats],
+                                              self._KITTI.getCatIds(catNms=categories)))
+
         self._image_index = self._load_image_set_index()
         # Default to roidb handler
         #self.set_proposal_method('selective_search')
@@ -77,10 +82,10 @@ class kitti(imdb):
         self._view_map = {            
             'val2012' : 'val2012'
         }
-        coco_name = image_set + year  # e.g., "val2014"
-        self._data_name = (self._view_map[coco_name]
-                           if self._view_map.has_key(coco_name)
-                           else coco_name)
+        kitti_name = image_set + year  # e.g., "val2014"
+        self._data_name = (self._view_map[kitti_name]
+                           if self._view_map.has_key(kitti_name)
+                           else kitti_name)
         # Dataset splits that have ground-truth annotations (test splits
         # do not have gt annotations)
         self._gt_splits = ('train', 'val', 'minival')
@@ -95,11 +100,11 @@ class kitti(imdb):
         """
         Load image ids.
         """
-        image_ids = self._COCO.getImgIds()
+        image_ids = self._KITTI.getImgIds()
         return image_ids
 
     def _get_widths(self):
-        anns = self._COCO.loadImgs(self._image_index)
+        anns = self._KITTI.loadImgs(self._image_index)
         widths = [ann['width'] for ann in anns]
         return widths
 
@@ -152,7 +157,7 @@ class kitti(imdb):
             method_roidb = self._load_proposals(method, gt_roidb)
             roidb = imdb.merge_roidbs(gt_roidb, method_roidb)
             # Make sure we don't use proposals that are contained in crowds
-            roidb = _filter_crowd_proposals(roidb, self.config['crowd_thresh'])
+            #roidb = _filter_crowd_proposals(roidb, self.config['crowd_thresh'])
         else:
             roidb = self._load_proposals(method, None)
         with open(cache_file, 'wb') as fid:
@@ -185,7 +190,7 @@ class kitti(imdb):
                 print '{:d} / {:d}'.format(i + 1, len(self._image_index))
 
             box_file = osp.join(
-                cfg.DATA_DIR, 'coco_proposals', method, 'mat',
+                cfg.DATA_DIR, 'kitti_proposals', method, 'mat',
                 self._get_box_file(index))
 
             raw_data = sio.loadmat(box_file)['boxes']
@@ -219,7 +224,7 @@ class kitti(imdb):
             print '{} gt roidb loaded from {}'.format(self.name, cache_file)
             return roidb
 
-        gt_roidb = [self._load_coco_annotation(index)
+        gt_roidb = [self._load_kitti_annotation(index)
                     for index in self._image_index]
 
         with open(cache_file, 'wb') as fid:
@@ -227,18 +232,22 @@ class kitti(imdb):
         print 'wrote gt roidb to {}'.format(cache_file)
         return gt_roidb
 
-    def _load_coco_annotation(self, index):
+    def _load_kitti_annotation(self, index):
         """
-        Loads COCO bounding-box instance annotations. Crowd instances are
+        Loads KITTI bounding-box instance annotations. Crowd instances are
         handled by marking their overlaps (with all categories) to -1. This
         overlap value means that crowd "instances" are excluded from training.
         """
-        im_ann = self._COCO.loadImgs(index)[0]
+        im_ann = self._KITTI.loadImgs(index)[0]
         width = im_ann['width']
         height = im_ann['height']
 
-        annIds = self._COCO.getAnnIds(imgIds=index, iscrowd=None)
-        objs = self._COCO.loadAnns(annIds)
+        # Follow 'demo_load_kitti_dataset.py by Soonmin'
+        aRng, occLevel, tRng = self.config['areaRng'], self.config['occLevel'], self.config['truncRng']
+
+        annIds = self._KITTI.getAnnIds(imgIds=index, areaRng=aRng, occLevel=occLevel, truncRng=tRng)
+        objs = self._KITTI.loadAnns(annIds)        
+
         # Sanitize bboxes -- some are invalid
         valid_objs = []
         for obj in objs:
@@ -246,70 +255,106 @@ class kitti(imdb):
             y1 = np.max((0, obj['bbox'][1]))
             x2 = np.min((width - 1, x1 + np.max((0, obj['bbox'][2] - 1))))
             y2 = np.min((height - 1, y1 + np.max((0, obj['bbox'][3] - 1))))
+            if not obj['category_id'] in self._class_to_kitti_cat_id.values():
+                continue
             if obj['area'] >= 0 and x2 >= x1 and y2 >= y1:
                 obj['clean_bbox'] = [x1, y1, x2, y2]
                 valid_objs.append(obj)
         objs = valid_objs            
         num_objs = len(objs)
 
-        #print( '# of valid_objs in kitti.py: {}'.format(num_objs))
+        if num_objs == 0:
+            #import pdb
+            #pdb.set_trace()
 
-        boxes = np.zeros((num_objs, 4), dtype=np.uint16)
-        gt_classes = np.zeros((num_objs), dtype=np.int32)
-        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
-        seg_areas = np.zeros((num_objs), dtype=np.float32)
+            # Fill virtual gt_boxes with [x1, y1, x2, y2] = [1, 1, 2, 2]
+            boxes = np.zeros((1, 4), dtype=np.uint16)
+            gt_classes = np.zeros((1), dtype=np.int32)
+            overlaps = np.zeros((1, self.num_classes), dtype=np.float32)
+            seg_areas = np.zeros((1), dtype=np.float32)
 
-        # Lookup table to map from COCO category ids to our internal class
-        # indices
-        coco_cat_id_to_class_ind = dict([(self._class_to_coco_cat_id[cls],
-                                          self._class_to_ind[cls])
-                                         for cls in self._classes[1:]])
-
-        for ix, obj in enumerate(objs):
-            cls = coco_cat_id_to_class_ind[obj['category_id']]
-            boxes[ix, :] = obj['clean_bbox']
-            gt_classes[ix] = cls
-            seg_areas[ix] = obj['area']
-            if obj['iscrowd']:
-                # Set overlap to -1 for all classes for crowd objects
-                # so they will be excluded during training
-                overlaps[ix, :] = -1.0
-            else:
-                overlaps[ix, cls] = 1.0
-
-        ds_utils.validate_boxes(boxes, width=width, height=height)
-        overlaps = scipy.sparse.csr_matrix(overlaps)        
-
-        return {'boxes' : boxes,
+            boxes[0, :] = [1, 1, 2, 2]
+            gt_classes[0] = 0
+            overlaps[0, :] = -1.0
+            seg_areas[0] = 1
+                    
+            overlaps = scipy.sparse.csr_matrix(overlaps) 
+            
+            return {'boxes' : boxes,
                 'gt_classes': gt_classes,
                 'gt_overlaps' : overlaps,
                 'flipped' : False,
                 'seg_areas' : seg_areas}
 
+        else:
+            #print( '# of valid_objs in kitti.py: {}'.format(num_objs))
+
+            boxes = np.zeros((num_objs, 4), dtype=np.uint16)
+            gt_classes = np.zeros((num_objs), dtype=np.int32)
+            overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
+            seg_areas = np.zeros((num_objs), dtype=np.float32)
+
+            # Lookup table to map from KITTI category ids to our internal class
+            # indices            
+
+            try:
+                kitti_cat_id_to_class_ind = dict([(self._class_to_kitti_cat_id[cls],
+                                              self._class_to_ind[cls])
+                                             for cls in self._classes[1:]])
+            except:
+                import pdb
+                pdb.set_trace()
+
+
+            for ix, obj in enumerate(objs):
+                obj_id = obj['category_id']
+                cls = kitti_cat_id_to_class_ind[obj_id]
+                boxes[ix, :] = obj['clean_bbox']
+                gt_classes[ix] = cls
+                seg_areas[ix] = obj['area']
+                if obj['iscrowd']:
+                    # Set overlap to -1 for all classes for crowd objects
+                    # so they will be excluded during training
+                    overlaps[ix, :] = -1.0
+                else:
+                    overlaps[ix, cls] = 1.0
+
+            ds_utils.validate_boxes(boxes, width=width, height=height)
+            overlaps = scipy.sparse.csr_matrix(overlaps)        
+
+            return {'boxes' : boxes,
+                    'gt_classes': gt_classes,
+                    'gt_overlaps' : overlaps,
+                    'flipped' : False,
+                    'seg_areas' : seg_areas}
+
     def _get_box_file(self, index):
         # first 14 chars / first 22 chars / all chars + .mat
         # COCO_val2014_0/COCO_val2014_000000447/COCO_val2014_000000447991.mat
+        
+        assert false, 'Do not use this function'
+
         file_name = ('COCO_' + self._data_name +
                      '_' + str(index).zfill(12) + '.mat')
         return osp.join(file_name[:14], file_name[:22], file_name)
 
-    def _print_detection_eval_metrics(self, coco_eval):
+    def _print_detection_eval_metrics(self, kitti_eval):
         IoU_lo_thresh = 0.5
         IoU_hi_thresh = 0.95
-        def _get_thr_ind(coco_eval, thr):
-            ind = np.where((coco_eval.params.iouThrs > thr - 1e-5) &
-                           (coco_eval.params.iouThrs < thr + 1e-5))[0][0]
-            iou_thr = coco_eval.params.iouThrs[ind]
+        def _get_thr_ind(kitti_eval, thr):
+            ind = np.where((kitti_eval.params.iouThrs > thr - 1e-5) &
+                           (kitti_eval.params.iouThrs < thr + 1e-5))[0][0]
+            iou_thr = kitti_eval.params.iouThrs[ind]
             assert np.isclose(iou_thr, thr)
             return ind
 
-        ind_lo = _get_thr_ind(coco_eval, IoU_lo_thresh)
-        ind_hi = _get_thr_ind(coco_eval, IoU_hi_thresh)
+        ind_lo = _get_thr_ind(kitti_eval, IoU_lo_thresh)
+        ind_hi = _get_thr_ind(kitti_eval, IoU_hi_thresh)
         # precision has dims (iou, recall, cls, area range, max dets)
         # area range index 0: all area ranges
         # max dets index 2: 100 per image
         precision = \
-            coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, :, 0, 2]
+            kitti_eval.eval['precision'][ind_lo:(ind_hi + 1), :, :, 0, 2]
         ap_default = np.mean(precision[precision > -1])
         print ('~~~~ Mean and per-category AP @ IoU=[{:.2f},{:.2f}] '
                '~~~~').format(IoU_lo_thresh, IoU_hi_thresh)
@@ -318,27 +363,27 @@ class kitti(imdb):
             if cls == '__background__':
                 continue
             # minus 1 because of __background__
-            precision = coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
+            precision = kitti_eval.eval['precision'][ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
             ap = np.mean(precision[precision > -1])
             print '{:.1f}'.format(100 * ap)
 
         print '~~~~ Summary metrics ~~~~'
-        coco_eval.summarize()
+        kitti_eval.summarize()
 
     def _do_detection_eval(self, res_file, output_dir):
         ann_type = 'bbox'
-        coco_dt = self._COCO.loadRes(res_file)
-        coco_eval = COCOeval(self._COCO, coco_dt)
-        coco_eval.params.useSegm = (ann_type == 'segm')
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        self._print_detection_eval_metrics(coco_eval)
+        kitti_dt = self._KITTI.loadRes(res_file)
+        kitti_eval = COCOeval(self._KITTI, kitti_dt)
+        kitti_eval.params.useSegm = (ann_type == 'segm')
+        kitti_eval.evaluate()
+        kitti_eval.accumulate()
+        self._print_detection_eval_metrics(kitti_eval)
         eval_file = osp.join(output_dir, 'detection_results.pkl')
         with open(eval_file, 'wb') as fid:
-            cPickle.dump(coco_eval, fid, cPickle.HIGHEST_PROTOCOL)
-        print 'Wrote COCO eval results to: {}'.format(eval_file)
+            cPickle.dump(kitti_eval, fid, cPickle.HIGHEST_PROTOCOL)
+        print 'Wrote KITTI eval results to: {}'.format(eval_file)
 
-    def _coco_results_one_category(self, boxes, cat_id):
+    def _kitti_results_one_category(self, boxes, cat_id):
         results = []
         for im_ind, index in enumerate(self.image_index):
             dets = boxes[im_ind].astype(np.float)
@@ -356,7 +401,7 @@ class kitti(imdb):
                 'score' : scores[k]} for k in xrange(dets.shape[0])])
         return results
 
-    def _write_coco_results_file(self, all_boxes, res_file):
+    def _write_kitti_results_file(self, all_boxes, res_file):
         # [{"image_id": 42,
         #   "category_id": 18,
         #   "bbox": [258.15,41.29,348.26,243.78],
@@ -367,9 +412,9 @@ class kitti(imdb):
                 continue
             print 'Collecting {} results ({:d}/{:d})'.format(cls, cls_ind,
                                                           self.num_classes - 1)
-            coco_cat_id = self._class_to_coco_cat_id[cls]
-            results.extend(self._coco_results_one_category(all_boxes[cls_ind],
-                                                           coco_cat_id))
+            kitti_cat_id = self._class_to_kitti_cat_id[cls]
+            results.extend(self._kitti_results_one_category(all_boxes[cls_ind],
+                                                           kitti_cat_id))
         print 'Writing results json to {}'.format(res_file)
         with open(res_file, 'w') as fid:
             json.dump(results, fid)
@@ -382,7 +427,7 @@ class kitti(imdb):
         if self.config['use_salt']:
             res_file += '_{}'.format(str(uuid.uuid4()))
         res_file += '.json'
-        self._write_coco_results_file(all_boxes, res_file)
+        self._write_kitti_results_file(all_boxes, res_file)
         # Only do evaluation on non-test sets
         if self._image_set.find('test') == -1:
             self._do_detection_eval(res_file, output_dir)

@@ -23,6 +23,9 @@ def prepare_roidb(imdb):
     sizes = [PIL.Image.open(imdb.image_path_at(i)).size
              for i in xrange(imdb.num_images)]
     roidb = imdb.roidb
+
+    counts = [ 0 for cls in imdb.classes ]
+    
     for i in xrange(len(imdb.image_index)):
         roidb[i]['image'] = imdb.image_path_at(i)
         roidb[i]['width'] = sizes[i][0]
@@ -42,6 +45,14 @@ def prepare_roidb(imdb):
         # max overlap > 0 => class should not be zero (must be a fg class)
         nonzero_inds = np.where(max_overlaps > 0)[0]
         assert all(max_classes[nonzero_inds] != 0)
+        # Count # of training samples for each class, added by Soonmin
+        for cid in roidb[i]['gt_classes']: counts[int(cid)] += 1
+        
+    
+    print '[[[[[ # of training samples ]]]]] '
+    for cnt in counts:
+        print '%d, ' % (cnt),
+    
 
 def add_bbox_regression_targets(roidb):
     """Add information needed to train bounding-box regressors."""

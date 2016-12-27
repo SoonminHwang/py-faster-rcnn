@@ -111,8 +111,8 @@ if __name__ == '__main__':
 
     print '[Train] {:d} roidb entries'.format(len(roidb_train))
     print '[Val] {:d} roidb entries'.format(len(roidb_val))
-
-    output_dir = get_output_dir(imdb_train)    
+        
+    output_dir = get_output_dir(imdb_train)
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
     train_net(args.solver, roidb_train, roidb_val, output_dir,

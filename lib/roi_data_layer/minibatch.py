@@ -42,6 +42,10 @@ def get_minibatch(roidb, num_classes):
         blobs['im_info'] = np.array(
             [[im_blob.shape[2], im_blob.shape[3], im_scales[0]]],
             dtype=np.float32)
+
+        # For debug visualizations
+        #_vis_minibatch_gt(im_blob, gt_boxes, roidb[0]['image'], roidb[0]['flipped'])
+
     else: # not using RPN
         # Now, build the region of interest and label blobs
         rois_blob = np.zeros((0, 5), dtype=np.float32)
@@ -180,6 +184,7 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
 def _vis_minibatch(im_blob, rois_blob, labels_blob, overlaps):
     """Visualize a mini-batch for debugging."""
     import matplotlib.pyplot as plt
+
     for i in xrange(rois_blob.shape[0]):
         rois = rois_blob[i, :]
         im_ind = rois[0]
@@ -197,3 +202,79 @@ def _vis_minibatch(im_blob, rois_blob, labels_blob, overlaps):
                           edgecolor='r', linewidth=3)
             )
         plt.show()
+
+def _vis_minibatch_gt(im_blob, gt_blob, fname, isflipped):
+    """Visualize a mini-batch for debugging."""
+    import matplotlib.pyplot as plt
+
+    assert im_blob.shape[0] == 1, '# of images in a minibatch should be 1!'
+
+    fig, ax = plt.subplots(2, 1, figsize=(15, 10))
+
+    im = im_blob[0, :, :, :].transpose((1, 2, 0)).copy()
+    im += cfg.PIXEL_MEANS
+    im = im[:, :, (2, 1, 0)]
+    im = im.astype(np.uint8)    
+    
+    plt.ion()
+
+    ax[0].imshow(im)    
+    for i in xrange(gt_blob.shape[0]):
+        roi = gt_blob[i, :]        
+                        
+        ax[0].add_patch(
+            plt.Rectangle((roi[0], roi[1]), roi[2] - roi[0],
+                          roi[3] - roi[1], fill=False,
+                          edgecolor='r', linewidth=3)
+            )
+    ax[0].set_title(fname)
+
+    
+    lineStyles = ['solid', 'dashed', 'dotted']
+    clrs = ['r', 'g', 'b']
+
+    # Load & show annotations
+    try:
+        import os
+
+        imgNm = '/'.join(fname.split('/')[-2:])
+        imgNm = os.path.join(cfg.DATA_DIR, 'kitti', 'images', imgNm)
+        im = cv2.imread(imgNm)
+        if isflipped:
+            im = im[:, ::-1, :]
+
+        annNm = '/'.join(fname.split('/')[-2:]).split('.')[0] + '.txt'
+        annNm = os.path.join(cfg.DATA_DIR, 'kitti', 'annotations', annNm)
+        with open(annNm, 'r') as f:
+            lines = f.readlines()
+
+            ax[1].imshow(im[:,:,(2,1,0)])
+
+            for line in lines:
+                d = line.split(' ')
+                nums = [float(num) for num in d[1:]]
+                clsStr = d[0]
+                trunc, occ, alpha = nums[:3]
+                left, top, right, bottom = nums[3:7]
+                width = right-left+1
+                height = bottom-top+1
+
+                if isflipped:
+                    xx = (1241-left, 1241-right)
+                    left = np.min(xx)
+                    right = np.max(xx)
+
+                bbox    = [left, top, width, height]
+
+                ax[1].add_patch(
+                    plt.Rectangle( (bbox[0], bbox[1]), bbox[2], bbox[3], fill=False,
+                        linestyle=lineStyles[int(trunc)], edgecolor='r', linewidth=3)
+                    )
+                ax[1].text(bbox[0], bbox[1]-2, 'trunc:{:.2f}'.format(trunc), color='white', bbox={'alpha':0.5})
+
+    except:
+        import pdb
+        pdb.set_trace()
+
+    plt.pause(0.001)
+    plt.show()
