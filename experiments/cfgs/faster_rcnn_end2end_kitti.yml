@@ -1,4 +1,4 @@
-EXP_DIR: scales_246
+EXP_DIR: scales_6_hard_examples_600_anchor
 
 IMAGE_SIZE: [375, 1242]
 
@@ -10,7 +10,7 @@ TRAIN:
   RPN_BATCHSIZE: 256
   PROPOSAL_METHOD: gt
   BG_THRESH_LO: 0.0
-  SCALES: [200, 400, 600]
+  SCALES: [600]
   MAX_SIZE: 2000
 TEST:
   HAS_RPN: True

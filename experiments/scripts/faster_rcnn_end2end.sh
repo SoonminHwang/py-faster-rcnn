@@ -35,7 +35,7 @@ case $DATASET in
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
     CONFIG="experiments/cfgs/faster_rcnn_end2end_kitti.yml"
-    #ITERS=30000
+    #ITERS=450000   # For AlexNet
     ITERS=150000
     ;;
   voc_0712)

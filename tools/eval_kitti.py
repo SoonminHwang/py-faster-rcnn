@@ -28,6 +28,8 @@ import caffe, os, sys, cv2
 import argparse
 from utils.cython_bbox import bbox_overlaps
 
+from calc_mAP_KITTI import calculate_mAP as calc_mAP
+
 CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
 
 #CONF_THRESH = 0.8
@@ -35,11 +37,13 @@ CONF_THRESH = 0.2
 NMS_THRESH = 0.3
 
 NETS = {'VGG16': ('VGG16',
-                  'VGG16_faster_rcnn_iter_{:d}.caffemodel'),
+                  'vgg16_faster_rcnn_iter_{:d}.caffemodel'),
         'ZF': ('ZF',
-                  'ZF_faster_rcnn_iter_{:d}.caffemodel'),
+                  'zf_faster_rcnn_iter_{:d}.caffemodel'),
         'ResNet50': ('ResNet50',
-                  'resnet50_faster_rcnn_iter_{:d}.caffemodel')}        
+                  'resnet50_faster_rcnn_iter_{:d}.caffemodel'),
+        'AlexNet': ('AlexNet',
+                  'alexnet_faster_rcnn_iter_{:d}.caffemodel')}
 
 def demo(net, image_name, conf_thres, nms_thres, resDir):
     """Detect object classes in an image using pre-computed object proposals."""
@@ -104,15 +108,18 @@ def parse_args():
                         choices=NETS.keys(), default='resnet50')
     #parser.add_argument('--caffemodel', dest='caffemodel', help='Trained weights [*.caffemodel]')
     parser.add_argument('--iter', dest='demo_iter', help='Iteration', type=int)
+    parser.add_argument('--exp', dest='demo_exp', help='Exp. name', type=str)
 
 
     parser.add_argument('--conf_thres', dest='conf_thres', help='Confidence threshold', 
                         default=CONF_THRESH, type=float)
     parser.add_argument('--nms_thres', dest='nms_thres', help='NMS threshold', 
                         default=NMS_THRESH, type=float)    
+
+    default_eval_dir = os.path.join(cfg.DATA_DIR, 'kitti', 'images', 'val2012')
     parser.add_argument('--evalDir', dest='eval_dir', 
 			help='For evaluation, please specify evaluation directory',
-			default='~/SSD/datasets/KITTI/images/val2012/', type=str)
+			default=default_eval_dir, type=str)
 
     args = parser.parse_args()
 
@@ -132,7 +139,7 @@ if __name__ == '__main__':
                             'faster_rcnn_end2end', 'test.prototxt')
     
     model = NETS[args.demo_net][1].format(args.demo_iter)
-    caffemodel = os.path.join(cfg.ROOT_DIR, 'output', 'faster_rcnn_end2end', 
+    caffemodel = os.path.join(cfg.ROOT_DIR, 'output', args.demo_exp, 
         'kitti_2012_train', model)
         
     if not os.path.isfile(caffemodel):
@@ -156,12 +163,13 @@ if __name__ == '__main__':
 
     import datetime
     nowStr = datetime.datetime.now().strftime('%Y-%m-%d_%Hh%Mm')
+    #nowStr = '2016-12-28_11h02m'
     #resDir = os.path.join(cfg.DATA_DIR, 'kitti', 'evaluation', 'results', nowStr + '_' + args.method_name)
     #if not os.path.exists(resDir):
     #    os.makedirs( resDir )
     
     # Save detections    
-    resDir = os.path.join(cfg.ROOT_DIR, 'output', 'faster_rcnn_end2end', 'kitti_2012_val', 
+    resDir = os.path.join(cfg.ROOT_DIR, 'output', args.demo_exp, 'kitti_2012_val', 
         nowStr, model.split('.')[0])
     if not os.path.exists(resDir):
         os.makedirs( resDir )
@@ -177,23 +185,26 @@ if __name__ == '__main__':
                 len(im_names), timer['im_detect'].average_time, 
                 timer['misc'].average_time, timer['save'].average_time)
 
-        os.system('cp tools/kitti_evaluate_object {:s}'.format(resDir))
-        os.system('cd {:s}'.format(resDir))
-        os.system('./kitti_evaluate_object')
+        try:
 
-        from tools.calc_mAP_KITTI import calculate_mAP
-
+            os.system('cp tools/kitti_evaluate_object {:s}'.format(resDir))
+            os.chdir(resDir)
+            os.system('./kitti_evaluate_object')      
+            
+            print '---------------------------------------------'
+            print '|  Class      |  Easy  | Moderate  |  Hard  |'
+            print '---------------------------------------------'
+            rec, mAP = calc_mAP('Car', 'plot')
+            print '| Car         | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
+            rec, mAP = calc_mAP('Pedestrian', 'plot')
+            print '| Pedestrian  | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
+            rec, mAP = calc_mAP('Cyclist', 'plot')
+            print '| Cyclist     | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
+            print '---------------------------------------------'
         
-        print '---------------------------------------------'
-        print '|  Class      |  Easy  | Moderate  |  Hard  |'
-        print '---------------------------------------------'
-        rec, mAP = calculate_mAP('Car', os.path.join(resDir, 'plot'))
-        print '| Car         | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
-        rec, mAP = calculate_mAP('Pedestrian', os.path.join(resDir, 'plot'))
-        print '| Pedestrian  | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
-        rec, mAP = calculate_mAP('Cyclist', os.path.join(resDir, 'plot'))
-        print '| Cyclist     | {:.2f} |  {:.2f}   | {:.2f} |'.format(mAP['Easy'], mAP['Moderate'], mAP['Hard'])
-        print '---------------------------------------------'
+        except:
+            import pdb
+            pdb.set_trace()
 
     else:
         #im_names = ['KITTI_000017.png']

@@ -89,7 +89,9 @@ def generate_anchors2(base_size=16, ratios=[], scales=[]):
     scales wrt a reference (0, 0, 15, 15) window.
     """    
     from fast_rcnn.config import cfg
+
     target_size = cfg.TRAIN.SCALES[0]
+    #target_size = 400
     max_size = cfg.TRAIN.MAX_SIZE
 
     im_size_min = np.min(cfg.IMAGE_SIZE)

@@ -20,7 +20,7 @@ class KITTI(COCO):
 		COCO.__init__(self, annotation_file)
 
 
-	def getAnnIds(self, imgIds=[], catIds=[], areaRng=[], occLevel=[], truncRng=[], alphaRng=[]):
+	def getAnnIds(self, imgIds=[], catIds=[], areaRng=[], occLevel=[], truncRng=[], alphaRng=[], hRng=[]):
 		"""
 		Get ann ids that satisfy given filter conditions. default skips that filter
 		:param imgIds  (int array)     : get anns for given imgs
@@ -29,6 +29,7 @@ class KITTI(COCO):
 		:param occLevel (int array)    : get anns for given occ level
 		:param truncRng (float array)  : get anns for given truncated range (e.g. [0 1])        
 		:param alphaRng (float array)  : get anns for given angle range (e.g. [-pi..pi])                   
+		:param hRng (float array)   : get anns for given height range (e.g. [0 inf])
 		:return: ids (int array)       : integer array of ann ids
 		"""
 		imgIds = imgIds if type(imgIds) == list else [imgIds]
@@ -48,6 +49,7 @@ class KITTI(COCO):
 			anns = anns if len(occLevel) == 0 else [ann for ann in anns if ann['occ'] in occLevel]
 			anns = anns if len(truncRng) == 0 else [ann for ann in anns if ann['trunc'] >= truncRng[0] and ann['trunc'] <= truncRng[1]]
 			anns = anns if len(alphaRng) == 0 else [ann for ann in anns if ann['alpha'] >= alphaRng[0] and ann['alpha'] <= alphaRng[1]]
+			anns = anns if len(hRng) == 0 else [ann for ann in anns if ann['bbox'][3] >= hRng[0] and ann['bbox'][3] <= hRng[1]]
 
 		ids = [ann['id'] for ann in anns]
 

@@ -50,10 +50,11 @@ class kitti(imdb):
                        'use_salt' : True,
                        'cleanup' : True,                       
                        'min_size' : 2,
-                       'areaRng' : [100, np.inf], # Min. 20 x 50 or 25 x 40
+                       'hRng' : [20, np.inf], # Min. 20 x 50 or 25 x 40
                        'occLevel' : [0, 1, 3],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
                        'truncRng' : [0, 0.35]     # Only partially-truncated
                       }
+                       #'areaRng' : [100, np.inf], # Min. 20 x 50 or 25 x 40
         # name, paths
         self._year = year
         self._image_set = image_set
@@ -62,6 +63,8 @@ class kitti(imdb):
         self._KITTI = KITTI(self._get_ann_file())
 
         categories = ['Pedestrian', 'Car', 'Cyclist']
+        ign_categories = ['Tram', 'Ignore']
+
         print '%s, %s, %s categories will be used.\n' % (categories[0], categories[1], categories[2])
 
         cats = self._KITTI.loadCats(self._KITTI.getCatIds(catNms=categories))
@@ -69,6 +72,9 @@ class kitti(imdb):
         self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))        
         self._class_to_kitti_cat_id = dict(zip([c['name'] for c in cats],
                                               self._KITTI.getCatIds(catNms=categories)))
+
+        # Igrnoe classes
+        self._ign_classes = tuple(ign_categories)
 
         self._image_index = self._load_image_set_index()
         # Default to roidb handler
@@ -243,9 +249,10 @@ class kitti(imdb):
         height = im_ann['height']
 
         # Follow 'demo_load_kitti_dataset.py by Soonmin'
-        aRng, occLevel, tRng = self.config['areaRng'], self.config['occLevel'], self.config['truncRng']
+        #aRng, occLevel, tRng = self.config['areaRng'], self.config['occLevel'], self.config['truncRng']
+        hRng, occLevel, tRng = self.config['hRng'], self.config['occLevel'], self.config['truncRng']
 
-        annIds = self._KITTI.getAnnIds(imgIds=index, areaRng=aRng, occLevel=occLevel, truncRng=tRng)
+        annIds = self._KITTI.getAnnIds(imgIds=index, hRng=hRng, occLevel=occLevel, truncRng=tRng)
         objs = self._KITTI.loadAnns(annIds)        
 
         # Sanitize bboxes -- some are invalid
