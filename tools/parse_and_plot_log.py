@@ -25,7 +25,8 @@ import seaborn as sns
 DATASET = {'kitti_train':'KITTI train/val', 'voc07_07':'PASCAL VOC train(07)/val(07)',
 	   'voc0712_07': 'PASCAL VOC train(07+12)/val(07)',
 	   'voc12_12': 'PASCAL VOC train(12)/val(12)',
-	   'voc0712_12': 'PASCAL VOC train(07+12)/val(12)'}
+	   'voc0712_12': 'PASCAL VOC train(07+12)/val(12)',
+       'kaist': 'KAIST CVPR15 train20/test20'}
 
 def extract_datetime_from_line(line, year):
     # Expected format: I0210 13:39:22.381027 25210 solver.cpp:204] Iteration 100, lr = 0.00992565

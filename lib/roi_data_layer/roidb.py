@@ -20,8 +20,20 @@ def prepare_roidb(imdb):
     each ground-truth box. The class with maximum overlap is also
     recorded.
     """
-    sizes = [PIL.Image.open(imdb.image_path_at(i)).size
-             for i in xrange(imdb.num_images)]
+    #try:
+    sizes = []
+    for i in xrange(imdb.num_images):
+        fName = imdb.image_path_at(i)
+        fName = fName[0] if type(fName) is list else fName
+        sz = PIL.Image.open(fName).size
+        sizes.append(sz)
+    #except:
+    #    import pdb
+    #    pdb.set_trace()
+
+    #sizes = [PIL.Image.open(imdb.image_path_at(i)).size
+    #         for i in xrange(imdb.num_images)]
+    
     roidb = imdb.roidb
 
     counts = [ 0 for cls in imdb.classes ]
@@ -42,17 +54,35 @@ def prepare_roidb(imdb):
         # max overlap of 0 => class should be zero (background)
         zero_inds = np.where(max_overlaps == 0)[0]
         assert all(max_classes[zero_inds] == 0)
+        
+        ########################################################################################
+        # MODIFIED: In KITTI or KAIST (sequence-type dataset), 
+        #   there are empty images which doesn't contain any target object instances for training.
+        # By Soonmin, 170109
+        ########################################################################################
         # max overlap > 0 => class should not be zero (must be a fg class)
-        nonzero_inds = np.where(max_overlaps > 0)[0]
-        assert all(max_classes[nonzero_inds] != 0)
+        #nonzero_inds = np.where(max_overlaps > 0)[0]
+        #assert all(max_classes[nonzero_inds] != 0)
+        
         # Count # of training samples for each class, added by Soonmin
         for cid in roidb[i]['gt_classes']: counts[int(cid)] += 1
         
+    if 'kitti' in imdb.name:
+        print ''
+        print '[[[[[ # of training samples ]]]]] '
+        for cnt in counts:
+            print '%d, ' % (cnt),
+        print '(DontCare), (Pedestrian), (Cyclist), (Car), ...'
+        print ''
     
-    print '[[[[[ # of training samples ]]]]] '
-    for cnt in counts:
-        print '%d, ' % (cnt),
-    
+    elif 'kaist' in imdb.name:
+        print ''
+        print '[[[[[ # of training samples ]]]]] '
+        for cnt in counts:
+            print '%d, ' % (cnt),
+        print '(DontCare), (person), ... (Ignored=-1)'
+        print ''
+
 
 def add_bbox_regression_targets(roidb):
     """Add information needed to train bounding-box regressors."""

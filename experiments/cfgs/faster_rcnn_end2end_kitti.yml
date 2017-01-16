@@ -1,4 +1,8 @@
-EXP_DIR: scales_6_hard_examples_600_anchor
+#EXP_DIR: kitti_scale3
+#EXP_DIR: kitti_scale5_aspect3
+#EXP_DIR: kitti_scale5_aspect3_hard_samples
+EXP_DIR: kitti_scales9_aspect6_ALL_CLASS
+#EXP_DIR: kitti_scale5_ratio4_ALL_CLASS
 
 IMAGE_SIZE: [375, 1242]
 
@@ -10,8 +14,15 @@ TRAIN:
   RPN_BATCHSIZE: 256
   PROPOSAL_METHOD: gt
   BG_THRESH_LO: 0.0
-  SCALES: [600]
+  #SCALES: [300]
+  SCALES: [576]
   MAX_SIZE: 2000
+  #MIN_SIZE: 576
+  DATADRIVEN_ANCHORS: False
+  #DATADRIVEN_ANCHORS: True
+  
 TEST:
   HAS_RPN: True
-  SCALES: [600]
+  #SCALES: [300]
+  #SCALES: [576]
+  SCALES: [750]

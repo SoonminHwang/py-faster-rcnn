@@ -415,7 +415,7 @@ layer {
   param { lr_mult: 1.0 decay_mult: 1.0 }
   param { lr_mult: 2.0 decay_mult: 0 }
   convolution_param {
-    num_output: 12   # 2(bg/fg) * 6(anchors)
+    num_output: 108   # 2(bg/fg) * 54(anchors)
     kernel_size: 1 pad: 0 stride: 1
     weight_filler { type: "gaussian" std: 0.01 }
     bias_filler { type: "constant" value: 0 }
@@ -429,7 +429,7 @@ layer {
   param { lr_mult: 1.0 decay_mult: 1.0 }
   param { lr_mult: 2.0 decay_mult: 0 }
   convolution_param {
-    num_output: 24   # 4 * 6(anchors)
+    num_output: 216   # 4 * 54(anchors)
     kernel_size: 1 pad: 0 stride: 1
     weight_filler { type: "gaussian" std: 0.01 }
     bias_filler { type: "constant" value: 0 }
@@ -456,7 +456,7 @@ layer {
   type: 'Reshape'
   bottom: 'rpn_cls_prob'
   top: 'rpn_cls_prob_reshape'
-  reshape_param { shape { dim: 0 dim: 12 dim: -1 dim: 0 } }
+  reshape_param { shape { dim: 0 dim: 108 dim: -1 dim: 0 } }
 }
 layer {
   name: 'proposal'
@@ -509,15 +509,15 @@ layer {
   bottom: "fc6"
   top: "fc6"
 }
-layer {
-  name: "drop6"
-  type: "Dropout"
-  bottom: "fc6"
-  top: "fc6"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
+#layer {
+#  name: "drop6"
+#  type: "Dropout"
+#  bottom: "fc6"
+#  top: "fc6"
+#  dropout_param {
+#    dropout_ratio: 0.5
+#  }
+#}
 layer {
   name: "fc7"
   type: "InnerProduct"
@@ -541,15 +541,15 @@ layer {
   bottom: "fc7"
   top: "fc7"
 }
-layer {
-  name: "drop7"
-  type: "Dropout"
-  bottom: "fc7"
-  top: "fc7"
-  dropout_param {
-    dropout_ratio: 0.5
-  }
-}
+#layer {
+#  name: "drop7"
+#  type: "Dropout"
+#  bottom: "fc7"
+#  top: "fc7"
+#  dropout_param {
+#    dropout_ratio: 0.5
+#  }
+#}
 layer {
   name: "cls_score"
   type: "InnerProduct"
@@ -564,7 +564,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 4
+    num_output: 9
     weight_filler {
       type: "gaussian"
       std: 0.01
@@ -589,7 +589,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 16 # 4 * 4
+    num_output: 36 # 4 * 4
     weight_filler {
       type: "gaussian"
       std: 0.001

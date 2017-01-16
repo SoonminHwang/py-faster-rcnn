@@ -21,13 +21,46 @@ class AnchorTargetLayer(caffe.Layer):
     """
     Assign anchors to ground-truth targets. Produces anchor classification
     labels and bounding-box regression targets.
-    """
+    """    
+
+    def setup_anchor(self, anchors):
+        self._anchors = anchors
+        self._num_anchors = self._anchors.shape[0]
+
+        #A = self._num_anchors
+        #height = self._bottom_height
+        #width  = self._bottom_width
+
+        print ''
+        print '------------------------------------------'
+        print 'Set data-driven anchors'
+        print 'anchors:'
+        print self._anchors
+        print '------------------------------------------'
+        print ''
+        
+        """Reshaping happens during the call to forward."""
+        # labels
+        #top[0].reshape(1, 1, A * height, width)
+        # bbox_targets
+        #top[1].reshape(1, A * 4, height, width)
+        # bbox_inside_weights
+        #top[2].reshape(1, A * 4, height, width)
+        # bbox_outside_weights
+        #top[3].reshape(1, A * 4, height, width)
+
 
     def setup(self, bottom, top):
         layer_params = yaml.load(self.param_str)
+        
+        # Default
         anchor_scales = layer_params.get('scales', (8, 16, 32))
-        #self._anchors = generate_anchors(scales=np.array(anchor_scales))
-        self._anchors = generate_anchors2()
+        self._anchors = generate_anchors(scales=np.array(anchor_scales))
+
+        # TODO: make "self._setup_anchor()" function & data-driven anchor generation        
+        #self._anchors = generate_anchors(scales=np.array((2,4,8,16,32)), ratios=[0.5, 1, 2])
+        #self._anchors = generate_anchors(scales=np.array(range(1,10)), ratios=[0.5, 1., 1.5, 2., 2.5, 3.])
+        #self._anchors = generate_anchors(scales=np.array(range(1,10,2)), ratios=np.asarray([0.5, 1.0, 2., 2.5]))
         self._num_anchors = self._anchors.shape[0]
         self._feat_stride = layer_params['feat_stride']
 
@@ -50,6 +83,10 @@ class AnchorTargetLayer(caffe.Layer):
         self._allowed_border = layer_params.get('allowed_border', 0)
 
         height, width = bottom[0].data.shape[-2:]
+        
+        self._bottom_height = height
+        self._bottom_width = width
+
         if DEBUG:
             print 'AnchorTargetLayer: height', height, 'width', width
 
@@ -90,22 +127,29 @@ class AnchorTargetLayer(caffe.Layer):
             print 'rpn: gt_boxes.shape', gt_boxes.shape
             print 'rpn: gt_boxes', gt_boxes
 
+        # ---------------------------------------------------------------------
+        # Original implementation (https://github.com/ShaoqingRen/faster_rcnn/),
+        # in {MATLAB_FR_RCNN_ROOT}/functions/rpn/proposal_locate_anchors.m
+        # function proposal_locate_anchors_single_scale
+        # ---------------------------------------------------------------------
         # 1. Generate proposals from bbox deltas and shifted anchors
         shift_x = np.arange(0, width) * self._feat_stride
         shift_y = np.arange(0, height) * self._feat_stride
         shift_x, shift_y = np.meshgrid(shift_x, shift_y)
         shifts = np.vstack((shift_x.ravel(), shift_y.ravel(),
                             shift_x.ravel(), shift_y.ravel())).transpose()
+        
         # add A anchors (1, A, 4) to
         # cell K shifts (K, 1, 4) to get
         # shift anchors (K, A, 4)
-        # reshape to (K*A, 4) shifted anchors
+        # reshape to (K*A, 4) shifted anchors        
         A = self._num_anchors
         K = shifts.shape[0]
         all_anchors = (self._anchors.reshape((1, A, 4)) +
                        shifts.reshape((1, K, 4)).transpose((1, 0, 2)))
         all_anchors = all_anchors.reshape((K * A, 4))
         total_anchors = int(K * A)
+        # ---------------------------------------------------------------------
 
         # only keep anchors inside the image
         inds_inside = np.where(
@@ -129,21 +173,21 @@ class AnchorTargetLayer(caffe.Layer):
         labels.fill(-1)
 
         # overlaps between the anchors and the gt boxes
-        # overlaps (ex, gt)
+        # overlaps (ex, gt)            
+        overlaps = bbox_overlaps(
+            np.ascontiguousarray(anchors, dtype=np.float),
+            np.ascontiguousarray(gt_boxes, dtype=np.float))
         try:
-            overlaps = bbox_overlaps(
-                np.ascontiguousarray(anchors, dtype=np.float),
-                np.ascontiguousarray(gt_boxes, dtype=np.float))
-            argmax_overlaps = overlaps.argmax(axis=1)
-            max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]
-            gt_argmax_overlaps = overlaps.argmax(axis=0)
-            gt_max_overlaps = overlaps[gt_argmax_overlaps,
-                                       np.arange(overlaps.shape[1])]
-            gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
-
+            argmax_overlaps = overlaps.argmax(axis=1)               # gt index
         except:
             import pdb
             pdb.set_trace()
+        max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]   
+        gt_argmax_overlaps = overlaps.argmax(axis=0)            # anchor index
+        gt_max_overlaps = overlaps[gt_argmax_overlaps,
+                                   np.arange(overlaps.shape[1])]    
+        gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
+
             
         if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             # assign bg labels first so that positive labels can clobber them

@@ -42,6 +42,8 @@ def _get_image_blob(im):
     processed_ims = []
     im_scale_factors = []
 
+    print('cfg.TEST.SCALES: {}'.format(cfg.TEST.SCALES)),
+
     for target_size in cfg.TEST.SCALES:
         im_scale = float(target_size) / float(im_size_min)
         # Prevent the biggest axis from being more than MAX_SIZE

@@ -9,6 +9,7 @@
 
 import numpy as np
 import cv2
+from fast_rcnn.config import cfg
 
 def im_list_to_blob(ims):
     """Convert a list of images into a network input.
@@ -17,7 +18,13 @@ def im_list_to_blob(ims):
     """
     max_shape = np.array([im.shape for im in ims]).max(axis=0)
     num_images = len(ims)
-    blob = np.zeros((num_images, max_shape[0], max_shape[1], 3),
+
+    if cfg.USE_THERMAL:
+        ch = 4
+    else:
+        ch = 3
+
+    blob = np.zeros((num_images, max_shape[0], max_shape[1], ch),
                     dtype=np.float32)
     for i in xrange(num_images):
         im = ims[i]

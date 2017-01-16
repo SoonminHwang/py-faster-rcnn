@@ -17,7 +17,7 @@ See README.md for installation instructions before running.
 """
 
 import _init_paths
-from fast_rcnn.config import cfg
+from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list
 from fast_rcnn.test import im_detect
 from fast_rcnn.nms_wrapper import nms
 from utils.timer import Timer
@@ -29,6 +29,8 @@ import argparse
 from utils.cython_bbox import bbox_overlaps
 
 from calc_mAP_KITTI import calculate_mAP as calc_mAP
+
+from datasets.factory import get_imdb
 
 CLASSES = ('__background__', 'Pedestrian', 'Cyclist', 'Car')
 
@@ -58,11 +60,22 @@ def demo(net, image_name, conf_thres, nms_thres, resDir):
     _t = {'im_detect' : Timer(), 'misc' : Timer(), 'save' : Timer()}
 
     _t['im_detect'].tic()
+    cfg_from_list(['TEST.SCALES', '[300]'])
     scores, boxes = im_detect(net, im)
+
+    cfg_from_list(['TEST.SCALES', '[576]'])
+    scores2, boxes2 = im_detect(net, im)
+
+    cfg_from_list(['TEST.SCALES', '[750]'])
+    scores3, boxes3 = im_detect(net, im)
     _t['im_detect'].toc()
     
     
     _t['misc'].tic()
+    
+    scores = np.vstack( (scores, scores2, scores3) )
+    boxes = np.vstack( (boxes, boxes2, boxes3) )
+
     results = np.zeros((0, 6), dtype=np.float32)
     # Visualize detections for each class
     for cls_ind, cls in enumerate(CLASSES[1:]):        
@@ -130,6 +143,14 @@ if __name__ == '__main__':
 
     args = parse_args()
 
+    cfg_from_file('./experiments/cfgs/faster_rcnn_end2end_kitti.yml')
+
+    cfg_from_list(['TEST.SCALES', '[300]'])
+    print('cfg.TEST.SCALES: {}'.format(cfg.TEST.SCALES)),
+
+    cfg_from_list(['TEST.SCALES', '[750]'])
+    print('cfg.TEST.SCALES: {}'.format(cfg.TEST.SCALES)),
+
     #prototxt = os.path.join(cfg.MODELS_DIR, NETS[args.demo_net][0],
     #                        'faster_rcnn_alt_opt', 'faster_rcnn_test.pt')
     #caffemodel = os.path.join(cfg.DATA_DIR, 'faster_rcnn_models',
@@ -155,6 +176,21 @@ if __name__ == '__main__':
     net = caffe.Net(prototxt, caffemodel, caffe.TEST)
 
     print '\n\nLoaded network {:s}'.format(caffemodel)
+
+    # imdb
+    #imdb = combined_roidb('kitti_2012_val')
+    imdb = get_imdb('kitti_2012_val')
+
+    if cfg.TRAIN.DATADRIVEN_ANCHORS:
+        # Set dataset-specific anchors
+        anchors = imdb.get_anchors()
+
+        #anchor_target_layer_ind = list(net._layer_names).index('rpn-data')
+        #net.layers[anchor_target_layer_ind].setup_anchor(anchors)
+
+        proposal_layer_ind = list(net._layer_names).index('proposal')
+        net.layers[proposal_layer_ind].setup_anchor(anchors)
+
 
     # Warmup on a dummy image
     im = 128 * np.ones((300, 500, 3), dtype=np.uint8)

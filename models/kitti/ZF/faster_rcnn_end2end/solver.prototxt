@@ -4,7 +4,7 @@ net: "models/kitti/ZF/faster_rcnn_end2end/trainval.prototxt"
 base_lr: 0.001
 lr_policy: "step"
 gamma: 0.1
-stepsize: 50000
+stepsize: 40000
 #stepsize: 12000
 display: 20
 average_loss: 100

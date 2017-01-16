@@ -23,7 +23,16 @@ EXTRA_ARGS=${array[@]:3:$len}
 EXTRA_ARGS_SLUG=${EXTRA_ARGS// /_}
 
 case $DATASET in
+  kaist)
+    DB_NAME="kaist"
+    TRAIN_IMDB="kaist_2015_train02"
+    TEST_IMDB="kaist_2015_test20"
+    PT_DIR="kaist"
+    CONFIG="experiments/cfgs/faster_rcnn_end2end_kaist.yml"    
+    ITERS=150000
+    ;;
   kitti_trainval)
+    DB_NAME="kitti_all"
     TRAIN_IMDB="kitti_2012_trainval"
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
@@ -31,6 +40,7 @@ case $DATASET in
     ITERS=100000
     ;;
   kitti)
+    DB_NAME="kitti"
     TRAIN_IMDB="kitti_2012_train"
     TEST_IMDB="kitti_2012_val"
     PT_DIR="kitti"
@@ -39,6 +49,7 @@ case $DATASET in
     ITERS=150000
     ;;
   voc_0712)
+    DB_NAME="voc0712"
     TRAIN_IMDB="voc_2007_trainval+voc_2012_trainval"
     TEST_IMDB="voc_2012_test"
     PT_DIR="pascal_voc"
@@ -46,6 +57,7 @@ case $DATASET in
     ITERS=100000
     ;;
   pascal_voc)
+    DB_NAME="voc07"
     TRAIN_IMDB="voc_2007_trainval"
     TEST_IMDB="voc_2007_test"
     PT_DIR="pascal_voc"
@@ -53,6 +65,7 @@ case $DATASET in
     ITERS=70000
     ;;
   coco14_trainval)
+    DB_NAME="coco14_all"
     # This is a very long and slow training schedule
     # You can probably use fewer iterations and reduce the
     # time to the LR drop (set in the solver to 350,000 iterations).
@@ -63,6 +76,7 @@ case $DATASET in
     ITERS=70000
     ;;
   coco)
+    DB_NAME="coco"
     # This is a very long and slow training schedule
     # You can probably use fewer iterations and reduce the
     # time to the LR drop (set in the solver to 350,000 iterations).
@@ -78,7 +92,7 @@ case $DATASET in
     ;;
 esac
 
-LOG="experiments/logs/faster_rcnn_end2end_${NET}_${EXTRA_ARGS_SLUG}.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
+LOG="experiments/logs/${DB_NAME}_${NET}_${EXTRA_ARGS_SLUG}.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
 exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 

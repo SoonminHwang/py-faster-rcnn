@@ -33,6 +33,9 @@ cfg = __C
 #
 __C.TRAIN = edict()
 
+# Use dataset specific anchors
+__C.TRAIN.DATADRIVEN_ANCHORS = False
+
 # Scales to use during training (can list multiple scales)
 # Each scale is the pixel size of an image's shortest side
 __C.TRAIN.SCALES = (600,)

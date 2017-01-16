@@ -21,14 +21,45 @@ class ProposalLayer(caffe.Layer):
     transformations to a set of regular boxes (called "anchors").
     """
 
+    def setup_anchor(self, anchors):
+        self._anchors = anchors
+        self._num_anchors = self._anchors.shape[0]
+
+        #A = self._num_anchors
+        #height = self._bottom_height
+        #width  = self._bottom_width
+
+        print ''
+        print '------------------------------------------'
+        print 'Set data-driven anchors'
+        print 'anchors:'
+        print self._anchors
+        print '------------------------------------------'
+        print ''
+        
+        """Reshaping happens during the call to forward."""
+        # labels
+        #top[0].reshape(1, 1, A * height, width)
+        # bbox_targets
+        #top[1].reshape(1, A * 4, height, width)
+        # bbox_inside_weights
+        #top[2].reshape(1, A * 4, height, width)
+        # bbox_outside_weights
+        #top[3].reshape(1, A * 4, height, width)
+
     def setup(self, bottom, top):
         # parse the layer parameter string, which must be valid YAML
         layer_params = yaml.load(self.param_str)
 
         self._feat_stride = layer_params['feat_stride']
+        
+        # Default
         anchor_scales = layer_params.get('scales', (8, 16, 32))
-        #self._anchors = generate_anchors(scales=np.array(anchor_scales))
-        self._anchors = generate_anchors2(scales=np.array(anchor_scales))
+        self._anchors = generate_anchors(scales=np.array(anchor_scales))
+        #self._anchors = generate_anchors(scales=np.array(range(1,10)), ratios=[0.5, 1., 1.5, 2., 2.5, 3.])
+
+        #self._anchors = generate_anchors(scales=np.array(range(1,10,2)), ratios=np.asarray([0.5, 1.0, 2., 2.5]))
+        #self._anchors = generate_anchors2(scales=np.array(anchor_scales))
         self._num_anchors = self._anchors.shape[0]
 
         if DEBUG:

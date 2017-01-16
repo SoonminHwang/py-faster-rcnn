@@ -12,7 +12,7 @@ __sets = {}
 from datasets.pascal_voc import pascal_voc
 from datasets.coco import coco
 from datasets.kitti import kitti
-#from datasets.kaist_ped import kaist_ped
+from datasets.kaist import kaist
 #from datasets.caltech_ped import caltech_ped
 
 import numpy as np
@@ -42,10 +42,10 @@ for year in ['2012']:
         __sets[name] = (lambda split=split, year=year: kitti(split, year))
 
 # Set up kaist_ped_2015_<split>
-#for year in ['2015']:	
-#	for split in ['train20', 'train02', 'test20', 'test01']:	# test01: to generate result videos
-#        name = 'kaist_ped_{}_{}'.format(year, split)
-#        __sets[name] = (lambda split=split, year=year: kaist_ped(split, year))
+for year in ['2015']:	
+    for split in ['train20', 'train02', 'train01', 'test20', 'test01']:	# test01: to generate result videos
+        name = 'kaist_{}_{}'.format(year, split)
+        __sets[name] = (lambda split=split, year=year: kaist(split, year))
 		
 # Set up caltech_ped_2009_<split>
 #for year in ['2009']:	

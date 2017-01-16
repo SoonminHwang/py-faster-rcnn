@@ -87,13 +87,19 @@ class RoIDataLayer(caffe.Layer):
         #layer_params = yaml.load(self.param_str_)
         layer_params = yaml.load(self.param_str)
 
-        self._num_classes = layer_params['num_classes']
+        if cfg.USE_THERMAL:
+            self._num_ch = 4
+        else:
+            self._num_ch = 3
 
+        self._num_classes = layer_params['num_classes']
+        
         self._name_to_top_map = {}
+
 
         # data blob: holds a batch of N images, each with 3 channels
         idx = 0
-        top[idx].reshape(cfg.TRAIN.IMS_PER_BATCH, 3,
+        top[idx].reshape(cfg.TRAIN.IMS_PER_BATCH, self._num_ch,
             max(cfg.TRAIN.SCALES), cfg.TRAIN.MAX_SIZE)
         self._name_to_top_map['data'] = idx
         idx += 1

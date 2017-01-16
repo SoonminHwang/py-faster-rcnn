@@ -26,15 +26,25 @@ def get_minibatch(roidb, num_classes):
     fg_rois_per_image = np.round(cfg.TRAIN.FG_FRACTION * rois_per_image)
 
     # Get the input image blob, formatted for caffe
-    im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
+    if len(roidb[0]['image']) == 2:     # KAIST Multispectral
+        im_blob, im_scales = _get_image_blob_ext(roidb, random_scale_inds)
+    else:
+        im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
 
     blobs = {'data': im_blob}
 
     if cfg.TRAIN.HAS_RPN:
         assert len(im_scales) == 1, "Single batch only"
         assert len(roidb) == 1, "Single batch only"
+        
+        ########################################################################################
+        # MODIFIED: In KITTI or KAIST (sequence-type dataset), 
+        #   Some instances should be ignored in training phase. (gt_classes == 0)        
+        # By Soonmin, 170109
+        ########################################################################################
         # gt boxes: (x1, y1, x2, y2, cls)
-        gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
+        #gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
+        gt_inds = np.where(roidb[0]['gt_classes'] >= 0)[0]
         gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
         gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :] * im_scales[0]
         gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
@@ -146,6 +156,32 @@ def _get_image_blob(roidb, scale_inds):
                                         cfg.TRAIN.MAX_SIZE)
         im_scales.append(im_scale)
         processed_ims.append(im)
+
+    # Create a blob to hold the input images
+    blob = im_list_to_blob(processed_ims)
+
+    return blob, im_scales
+
+def _get_image_blob_ext(roidb, scale_inds):
+    """Builds an input blob from the images in the roidb at the specified
+    scales.
+    """
+    num_images = len(roidb)
+    processed_ims = []
+    im_scales = []
+    for i in xrange(num_images):
+        im1 = cv2.imread(roidb[i]['image'][0])
+        im2 = cv2.cvtColor( cv2.imread(roidb[i]['image'][1]), cv2.COLOR_RGB2GRAY )
+
+        im_rgbt = np.dstack((im1, im2))
+
+        if roidb[i]['flipped']:
+            im_rgbt = im_rgbt[:, ::-1, :]
+        target_size = cfg.TRAIN.SCALES[scale_inds[i]]
+        im_rgbt, im_scale = prep_im_for_blob(im_rgbt, cfg.PIXEL_MEANS, target_size,
+                                        cfg.TRAIN.MAX_SIZE)
+        im_scales.append(im_scale)
+        processed_ims.append(im_rgbt)
 
     # Create a blob to hold the input images
     blob = im_list_to_blob(processed_ims)
@@ -277,4 +313,4 @@ def _vis_minibatch_gt(im_blob, gt_blob, fname, isflipped):
         pdb.set_trace()
 
     plt.pause(0.001)
-    plt.show()
+    #plt.show()

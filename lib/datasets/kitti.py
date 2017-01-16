@@ -3,6 +3,23 @@
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Ross Girshick
 # --------------------------------------------------------
+# If you add another dataset,
+#   please modify follow files.
+#       - json instances (converted raw annotation file)
+#       - this file
+#       - roi_data_layer/minibatch.py (input layer)
+#       - rpn/anchor_target_layer.py (generate GT for RPN)
+#       - rpn/proposal_layer.py (produce RoIs in pixel: sort, nms)
+#       - rpn/proposal_target_layer.py (generate GT for RCNN)
+# --------------------------------------------------------
+#
+# For KITTI, 
+#       Ignore instances: do not load (filtered out at func. self._KITTI.getAnnIds)
+#       Empty images: add dummy gt_box
+#           gt_classes[0] = 0
+#           overlaps[0, :] = -1.0
+#
+# --------------------------------------------------------
 
 from datasets.imdb import imdb
 import datasets.ds_utils as ds_utils
@@ -43,6 +60,20 @@ def _filter_crowd_proposals(roidb, crowd_thresh):
     return roidb
 
 class kitti(imdb):
+    @property
+    def num_classes(self):
+        return len(self._valid_class_ind)
+
+    def get_anchors(self):
+        anchors = np.array( [[ -58.083,  -33.423,   58.083,   33.423],  \
+                            [ -15.409,  -11.599,   15.409,   11.599],   \
+                            [ -29.462,  -19.389,   29.462,   19.389],   \
+                            [  -9.935,  -25.517,    9.935,   25.517],   \
+                            [ -29.315,  -66.092,   29.315,   66.092],   \
+                            [-117.351,  -69.798,  117.351,   69.798]])
+
+        return anchors
+
     def __init__(self, image_set, year):
         imdb.__init__(self, 'kitti_' + year + '_' + image_set)
         # KITTI specific config options
@@ -50,9 +81,9 @@ class kitti(imdb):
                        'use_salt' : True,
                        'cleanup' : True,                       
                        'min_size' : 2,
-                       'hRng' : [20, np.inf], # Min. 20 x 50 or 25 x 40
-                       'occLevel' : [0, 1, 3],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
-                       'truncRng' : [0, 0.35]     # Only partially-truncated
+                       'hRng' : [25, np.inf], # Min. 20 x 50 or 25 x 40
+                       'occLevel' : [0, 1, 2],       # 0: fully visible, 1: partly occ, 2: largely occ, 3: unknown
+                       'truncRng' : [0, 0.5]     # Only partially-truncated
                       }
                        #'areaRng' : [100, np.inf], # Min. 20 x 50 or 25 x 40
         # name, paths
@@ -62,19 +93,25 @@ class kitti(imdb):
         # load KITTI API, classes, class <-> id mappings
         self._KITTI = KITTI(self._get_ann_file())
 
-        categories = ['Pedestrian', 'Car', 'Cyclist']
-        ign_categories = ['Tram', 'Ignore']
+        # First, list up all categories in raw annotations
+        # Then several classes which are not included in self._valid_class_ind are ignored
+        #   when self._load_kitti_annoations() is called
+        categories = ['Pedestrian', 'Cyclist', 'Car', 'Person_sitting', 'Van',
+                      'Truck', 'Tram', 'Misc']
 
-        print '%s, %s, %s categories will be used.\n' % (categories[0], categories[1], categories[2])
+        #print '%s, %s, %s categories will be used.\n' % (categories[0], categories[1], categories[2])
 
         cats = self._KITTI.loadCats(self._KITTI.getCatIds(catNms=categories))
-        self._classes = tuple(['__background__'] + [c['name'] for c in cats])        
-        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))        
+        self._classes = tuple(['__background__'] + [c['name'] for c in cats])
+        
+        # TODO: modify this....
+        #self._valid_class_ind = [0, 1, 2, 3]
+        self._valid_class_ind = range(10)
+
+        #self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes))
+        self._class_to_ind = dict(zip(self.classes, xrange(len(self._classes))))
         self._class_to_kitti_cat_id = dict(zip([c['name'] for c in cats],
                                               self._KITTI.getCatIds(catNms=categories)))
-
-        # Igrnoe classes
-        self._ign_classes = tuple(ign_categories)
 
         self._image_index = self._load_image_set_index()
         # Default to roidb handler
@@ -85,22 +122,27 @@ class kitti(imdb):
         # Some image sets are "views" (i.e. subsets) into others.
         # For example, minival2014 is a random 5000 image subset of val2014.
         # This mapping tells us where the view's images and proposals come from.
-        self._view_map = {            
-            'val2012' : 'val2012'
-        }
-        kitti_name = image_set + year  # e.g., "val2014"
-        self._data_name = (self._view_map[kitti_name]
-                           if self._view_map.has_key(kitti_name)
-                           else kitti_name)
+        #self._view_map = {            
+        #    'val2012' : 'val2012',
+        #    'train2012' : 'train2012'
+        #}
+        #kitti_name = image_set + year  # e.g., "val2014"
+        #self._data_name = (self._view_map[kitti_name]
+        #                   if self._view_map.has_key(kitti_name)
+        #                   else kitti_name)
         # Dataset splits that have ground-truth annotations (test splits
         # do not have gt annotations)
-        self._gt_splits = ('train', 'val', 'minival')
+        self._gt_splits = ['train', 'val', 'minival']
 
     def _get_ann_file(self):
         prefix = 'instances' if self._image_set.find('test') == -1 \
-                             else 'image_info'
+                             else 'image_info'            
+        
         return osp.join(self._data_path, 'annotations',
                         prefix + '_' + self._image_set + self._year + '.json')
+
+        #return osp.join(self._data_path, 'annotations',
+        #                prefix + '_' + gt_splits + self._year + '.json')
 
     def _load_image_set_index(self):
         """
@@ -126,9 +168,17 @@ class kitti(imdb):
         """
         # Example image path for index=119993:
         #   images/train2014/COCO_train2014_000000119993.jpg
-        file_name = (str(index).zfill(6) + '.png')
+
+
+        im_ann = self._KITTI.loadImgs(index)[0]
+        #file_name = (str(index).zfill(6) + '.png')
+        
+        gt_splits = 'trainval' if self._image_set in ['train', 'val'] else 'test'
         image_path = osp.join(self._data_path, 'images',
-                              self._data_name, file_name)
+                              gt_splits + self._year, im_ann['file_name'])
+
+        #image_path = osp.join(self._data_path, 'images',
+        #                      self._data_name, file_name)
         assert osp.exists(image_path), \
                 'Path does not exist: {}'.format(image_path)
         return image_path
@@ -252,7 +302,15 @@ class kitti(imdb):
         #aRng, occLevel, tRng = self.config['areaRng'], self.config['occLevel'], self.config['truncRng']
         hRng, occLevel, tRng = self.config['hRng'], self.config['occLevel'], self.config['truncRng']
 
-        annIds = self._KITTI.getAnnIds(imgIds=index, hRng=hRng, occLevel=occLevel, truncRng=tRng)
+        # Do not load 'DontCare' class
+        catIds = range(1,9)
+        annIds = self._KITTI.getAnnIds(catIds=catIds, imgIds=index, hRng=hRng, occLevel=occLevel, truncRng=tRng)
+        #annIds = self._KITTI.getAnnIds(imgIds=index, hRng=hRng, occLevel=occLevel, truncRng=tRng)
+
+        # TODO: To use this option, please modify labels in Line 169 ~ in rpn/anchor_target_layer.py
+        # First, load all annotations & ann that doesn't satisfy condition, set to ignore (Line 344~)
+        # annIds = self._KITTI.getAnnIds(imgIds=index)
+
         objs = self._KITTI.loadAnns(annIds)        
 
         # Sanitize bboxes -- some are invalid
@@ -262,18 +320,21 @@ class kitti(imdb):
             y1 = np.max((0, obj['bbox'][1]))
             x2 = np.min((width - 1, x1 + np.max((0, obj['bbox'][2] - 1))))
             y2 = np.min((height - 1, y1 + np.max((0, obj['bbox'][3] - 1))))
-            if not obj['category_id'] in self._class_to_kitti_cat_id.values():
-                continue
+            #if not obj['category_id'] in self._class_to_kitti_cat_id.values():
+            #    continue
+
+            # All valid annotations must satisfy below condition
             if obj['area'] >= 0 and x2 >= x1 and y2 >= y1:
                 obj['clean_bbox'] = [x1, y1, x2, y2]
                 valid_objs.append(obj)
+
         objs = valid_objs            
         num_objs = len(objs)
 
         if num_objs == 0:
-            #import pdb
-            #pdb.set_trace()
-
+            # In traffic scene datasets (e.g. KITTI, KAIST),
+            #   some images may not contain target object instance.            
+            
             # Fill virtual gt_boxes with [x1, y1, x2, y2] = [1, 1, 2, 2]
             boxes = np.zeros((1, 4), dtype=np.uint16)
             gt_classes = np.zeros((1), dtype=np.int32)
@@ -293,9 +354,7 @@ class kitti(imdb):
                 'flipped' : False,
                 'seg_areas' : seg_areas}
 
-        else:
-            #print( '# of valid_objs in kitti.py: {}'.format(num_objs))
-
+        else:            
             boxes = np.zeros((num_objs, 4), dtype=np.uint16)
             gt_classes = np.zeros((num_objs), dtype=np.int32)
             overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
@@ -303,28 +362,41 @@ class kitti(imdb):
 
             # Lookup table to map from KITTI category ids to our internal class
             # indices            
-
-            try:
-                kitti_cat_id_to_class_ind = dict([(self._class_to_kitti_cat_id[cls],
-                                              self._class_to_ind[cls])
-                                             for cls in self._classes[1:]])
-            except:
-                import pdb
-                pdb.set_trace()
-
+            # ** This mapping table contained "ignore" categories.
+            #kitti_cat_id_to_class_ind = dict([(self._class_to_kitti_cat_id[cls],
+            #                                  self._class_to_ind[cls])
+            #                                 for cls in self._classes[1:]])
+            
+            #import pdb
+            #pdb.set_trace()
 
             for ix, obj in enumerate(objs):
-                obj_id = obj['category_id']
-                cls = kitti_cat_id_to_class_ind[obj_id]
+                #obj_id = obj['category_id']
+                #cls = kitti_cat_id_to_class_ind[obj_id]
+
+                #from IPython import embed
+                #embed()            
+
+                cls = obj['category_id']                
                 boxes[ix, :] = obj['clean_bbox']
                 gt_classes[ix] = cls
                 seg_areas[ix] = obj['area']
-                if obj['iscrowd']:
-                    # Set overlap to -1 for all classes for crowd objects
-                    # so they will be excluded during training
-                    overlaps[ix, :] = -1.0
-                else:
-                    overlaps[ix, cls] = 1.0
+
+                overlaps[ix, cls] = 1.0
+
+                #if obj['iscrowd']:
+                #    # Set overlap to -1 for all classes for crowd objects
+                #    # so they will be excluded during training
+                #    overlaps[ix, :] = -1.0
+                #else:
+                #    overlaps[ix, cls] = 1.0
+
+                # Check labels of ignore class
+                if not cls in self._valid_class_ind:
+                    if cls != -1:
+                        import pdb
+                        pdb.set_trace()
+                        assert cls == -1, "\'gt_class\'' for ignore class should be set to -1."
 
             ds_utils.validate_boxes(boxes, width=width, height=height)
             overlaps = scipy.sparse.csr_matrix(overlaps)        
@@ -449,3 +521,10 @@ class kitti(imdb):
         else:
             self.config['use_salt'] = True
             self.config['cleanup'] = True
+
+if __name__ == '__main__':
+    from datasets.kitti import kitti
+    d = kitti('train', '2012')
+    res = d.roidb
+    from IPython import embed; embed()
+

@@ -87,21 +87,8 @@ def generate_anchors2(base_size=16, ratios=[], scales=[]):
     """
     Generate anchor (reference) windows by enumerating aspect ratios X
     scales wrt a reference (0, 0, 15, 15) window.
-    """    
-    from fast_rcnn.config import cfg
-
-    target_size = cfg.TRAIN.SCALES[0]
-    #target_size = 400
-    max_size = cfg.TRAIN.MAX_SIZE
-
-    im_size_min = np.min(cfg.IMAGE_SIZE)
-    im_size_max = np.max(cfg.IMAGE_SIZE)
-    im_scale = float(target_size) / float(im_size_min)
-
-    if np.round(im_scale * im_size_max) > max_size:
-        im_scale = float(max_size) / float(im_size_max)
-
-    return KITTI_ANCHORS * im_scale
+    """        
+    return KITTI_ANCHORS
 
 def _whctrs(anchor):
     """

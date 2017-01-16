@@ -115,6 +115,6 @@ if __name__ == '__main__':
     output_dir = get_output_dir(imdb_train)
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
-    train_net(args.solver, roidb_train, roidb_val, output_dir,
+    train_net(args.solver, roidb_train, roidb_val, imdb_train, output_dir,
               pretrained_model=args.pretrained_model,
               max_iters=args.max_iters)
