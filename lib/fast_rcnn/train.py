@@ -45,14 +45,16 @@ class SolverWrapper(object):
             print ('Loading pretrained model '
                    'weights from {:s}').format(pretrained_model)
             self.solver.net.copy_from(pretrained_model)
-            self.solver.test_nets[0].copy_from(pretrained_model)
+            if len(self.solver.test_nets) > 0:
+                self.solver.test_nets[0].copy_from(pretrained_model)
 
         self.solver_param = caffe_pb2.SolverParameter()
         with open(solver_prototxt, 'rt') as f:
             pb2.text_format.Merge(f.read(), self.solver_param)
 
-        self.solver.net.layers[0].set_roidb(roidb_train)    
-        self.solver.test_nets[0].layers[0].set_roidb(roidb_val)
+        self.solver.net.layers[0].set_roidb(roidb_train)
+        if len(self.solver.test_nets) > 0:
+            self.solver.test_nets[0].layers[0].set_roidb(roidb_val)
 
         if cfg.TRAIN.DATADRIVEN_ANCHORS:
             # Set dataset-specific anchors
@@ -64,11 +66,12 @@ class SolverWrapper(object):
             proposal_layer_ind = list(self.solver.net._layer_names).index('proposal')
             self.solver.net.layers[proposal_layer_ind].setup_anchor(anchors)
 
-            anchor_target_layer_ind = list(self.solver.test_nets[0]._layer_names).index('rpn-data')
-            self.solver.test_nets[0].layers[anchor_target_layer_ind].setup_anchor(anchors)
+            if len(self.solver.test_nets) > 0:
+                anchor_target_layer_ind = list(self.solver.test_nets[0]._layer_names).index('rpn-data')
+                self.solver.test_nets[0].layers[anchor_target_layer_ind].setup_anchor(anchors)
 
-            proposal_layer_ind = list(self.solver.test_nets[0]._layer_names).index('proposal')
-            self.solver.test_nets[0].layers[proposal_layer_ind].setup_anchor(anchors)
+                proposal_layer_ind = list(self.solver.test_nets[0]._layer_names).index('proposal')
+                self.solver.test_nets[0].layers[proposal_layer_ind].setup_anchor(anchors)
         
     def snapshot(self):
         """Take a snapshot of the network after unnormalizing the learned

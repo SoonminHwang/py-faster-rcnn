@@ -100,6 +100,8 @@ def parse_log(path_to_log):
     regex_train_output = re.compile('Train net output #(\d+): (\S+) = ([\.\deE+-]+)')
     regex_test_output = re.compile('Test net output #(\d+): (\S+) = ([\.\deE+-]+)')
     regex_learning_rate = re.compile('lr = ([-+]?[0-9]*\.?[0-9]+([eE]?[-+]?[0-9]+)?)')
+    regex_train_total_loss = re.compile(', loss = ([\.\deE+-]+)')
+    regex_test_total_loss = re.compile('Test loss: ([\.\deE+-]+)')
 
     # Pick out lines of interest
     iteration = -1
@@ -108,6 +110,9 @@ def parse_log(path_to_log):
     test_dict_list = []
     train_row = None
     test_row = None
+
+    train_total_loss = None
+    test_total_loss = None
 
     logfile_year = get_log_created_year(path_to_log)
     with open(path_to_log) as f:
@@ -141,14 +146,23 @@ def parse_log(path_to_log):
             if learning_rate_match:
                 learning_rate = float(learning_rate_match.group(1))
 
+            # Training total loss
+            train_total_loss_match = regex_train_total_loss.search(line)
+            if train_total_loss_match:                
+                train_total_loss = float(train_total_loss_match.group(1))
+                
+            # Testing total loss
+            test_total_loss_match = regex_test_total_loss.search(line)
+            if test_total_loss_match:
+                test_total_loss = float(test_total_loss_match.group(1))
+
             train_dict_list, train_row = parse_line_for_net_output(
                 regex_train_output, train_row, train_dict_list,
-                line, iteration, seconds, learning_rate
-            )
+                line, iteration, seconds, learning_rate, train_total_loss )
+            
             test_dict_list, test_row = parse_line_for_net_output(
                 regex_test_output, test_row, test_dict_list,
-                line, iteration, seconds, learning_rate
-            )
+                line, iteration, seconds, learning_rate, test_total_loss )
 
     fix_initial_nan_learning_rate(train_dict_list)
     fix_initial_nan_learning_rate(test_dict_list)
@@ -157,7 +171,7 @@ def parse_log(path_to_log):
 
 
 def parse_line_for_net_output(regex_obj, row, row_dict_list,
-                              line, iteration, seconds, learning_rate):
+                              line, iteration, seconds, learning_rate, total_loss):
     """Parse a single line for training or test output
 
     Returns a a tuple with (row_dict_list, row)
@@ -180,6 +194,7 @@ def parse_line_for_net_output(regex_obj, row, row_dict_list,
             row = OrderedDict([
                 ('NumIters', iteration),
                 ('Seconds', seconds),
+                ('total_loss', total_loss),
                 ('LearningRate', learning_rate)
             ])
 
@@ -302,11 +317,12 @@ def main():
     cols = int(np.ceil(len(loss_term) / 2.0))
     rows = 2
 
-    fig, axes = plt.subplots(rows, cols, figsize=(10,10))
+    fig, axes = plt.subplots(rows, cols, figsize=(5*cols, 5*rows))
     fig.subplots_adjust(hspace=0.5)
     axes = axes.flatten()
 
     for ii, term in enumerate(loss_term):
+        
         drawPlot(axes[ii], train_dict_list, 'NumIters', term, 20, 'b-', {'alpha':0.3, 'label':'Train'})
         try:	
             drawPlot(axes[ii], test_dict_list,  'NumIters', term, 4,  'r-', {'alpha':0.3, 'label':'Test'})
@@ -326,63 +342,9 @@ def main():
 
 
     plt.suptitle(DATASET[args.dataset])
-
-
-    #drawPlot(train_dict_list, 'NumIters', 'loss_bbox', 40, 'b-', {'alpha':0.3, 'label':'Train'})
-    #drawPlot(test_dict_list, 'NumIters', 'loss_bbox', 4, 'r-', {'alpha':0.3, 'label':'Test'})
-
-    #plt.xlabel('Iteration')
-    #plt.ylabel('Loss')
-
-    #plt.legend()
-
     plt.savefig(args.logfile_path + '.png')
 
-#    # Draw plot
-#    iters = [train_dict['NumIters'] for train_dict in train_dict_list]
-#    try:
-#        loss_bbox = [train_dict['bbox_loss'] for train_dict in train_dict_list] # For ZF
-#    except:
-#        loss_bbox = [train_dict['loss_bbox'] for train_dict in train_dict_list]
-#
-#    step = 20
-#    loss_bbox_avg = []
-#    for ii in range(0, len(loss_bbox), step):
-#        s = max(0, ii-step/2)
-#	e = min(len(loss_bbox), ii+step/2)
-#	loss_bbox_avg.append(np.mean(loss_bbox[s:e]))
-
-    #loss_bbox_avg = []
-    #for ii in range(len(loss_bbox) - 100):        
-    #    loss_bbox_avg.append(np.mean(loss_bbox[ii:ii+100])) 
-        
-#    fig = plt.figure()
-
-#    plt.plot(iters, loss_bbox, 'b-', alpha=0.3 )
-#    plt.plot(iters[::step], loss_bbox_avg, 'b-', label='Train')    
-#    plt.xlabel('Iteration')
-#    plt.ylabel('Loss')
-#
-#    try:
-#	# Validation
-#	iters = [test_dict['NumIters'] for test_dict in test_dict_list]
-#	loss_bbox = [test_dict['loss_bbox'] for test_dict in test_dict_list]
-#
-#	step = 4
-#	loss_bbox_avg = []
-#	for ii in range(0, len(loss_bbox), step):
-#	    s = max(0, ii-step/2)
-#	    e = min(len(loss_bbox), ii+step/2)
-#	    loss_bbox_avg.append(np.mean(loss_bbox[s:e]))
-#
-#	plt.plot(iters, loss_bbox, 'r-', alpha=0.3)
-#	plt.plot(iters[::step], loss_bbox_avg, 'r-', label='Val')
-#    except:
-#	print('Cannot load test loss')
-#
-#    plt.legend()
-#    plt.title('loss_bbox')
-#    plt.savefig(args.logfile_path + '.png', dpi=fig.dpi)
-
 if __name__ == '__main__':
+
     main()
+

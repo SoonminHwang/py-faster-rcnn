@@ -1,8 +1,9 @@
 #EXP_DIR: kitti_scale3
 #EXP_DIR: kitti_scale5_aspect3
 #EXP_DIR: kitti_scale5_aspect3_hard_samples
-EXP_DIR: kitti_scales9_aspect6_ALL_CLASS
+#EXP_DIR: kitti_scales9_aspect6_ALL_CLASS
 #EXP_DIR: kitti_scale5_ratio4_ALL_CLASS
+EXP_DIR: kitti_datadriven_xy_ALL
 
 IMAGE_SIZE: [375, 1242]
 
@@ -18,8 +19,9 @@ TRAIN:
   SCALES: [576]
   MAX_SIZE: 2000
   #MIN_SIZE: 576
-  DATADRIVEN_ANCHORS: False
+  DATADRIVEN_ANCHORS: True
   #DATADRIVEN_ANCHORS: True
+  SNAPSHOT_ITERS: 4000
   
 TEST:
   HAS_RPN: True

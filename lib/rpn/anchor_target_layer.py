@@ -54,7 +54,7 @@ class AnchorTargetLayer(caffe.Layer):
         layer_params = yaml.load(self.param_str)
         
         # Default
-        anchor_scales = layer_params.get('scales', (8, 16, 32))
+        anchor_scales = layer_params.get('scales', (2, 4, 8, 16))
         self._anchors = generate_anchors(scales=np.array(anchor_scales))
 
         # TODO: make "self._setup_anchor()" function & data-driven anchor generation        

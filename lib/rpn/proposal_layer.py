@@ -54,7 +54,7 @@ class ProposalLayer(caffe.Layer):
         self._feat_stride = layer_params['feat_stride']
         
         # Default
-        anchor_scales = layer_params.get('scales', (8, 16, 32))
+        anchor_scales = layer_params.get('scales', (2, 4, 8, 16))
         self._anchors = generate_anchors(scales=np.array(anchor_scales))
         #self._anchors = generate_anchors(scales=np.array(range(1,10)), ratios=[0.5, 1., 1.5, 2., 2.5, 3.])
 

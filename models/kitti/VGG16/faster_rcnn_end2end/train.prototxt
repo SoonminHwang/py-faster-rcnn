@@ -8,23 +8,8 @@ layer {
   python_param {
     module: 'roi_data_layer.layer'
     layer: 'RoIDataLayer'
-    param_str: "'num_classes': 4"
-  }
-  phase: TRAIN
-}
-
-layer {
-  name: 'input-data'
-  type: 'Python'
-  top: 'data'
-  top: 'im_info'
-  top: 'gt_boxes'
-  python_param {
-    module: 'roi_data_layer.layer'
-    layer: 'RoIDataLayer'
-    param_str: "'num_classes': 4"
-  }
-  phase: TEST
+    param_str: "'num_classes': 9"
+  }  
 }
 
 layer {
@@ -542,7 +527,7 @@ layer {
   python_param {
     module: 'rpn.proposal_target_layer'
     layer: 'ProposalTargetLayer'
-    param_str: "'num_classes': 4"
+    param_str: "'num_classes': 9"
   }
 }
 
@@ -587,7 +572,7 @@ layer {
   bottom: "fc6"
   top: "fc6"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.7
   }
 }
 layer {
@@ -617,7 +602,7 @@ layer {
   bottom: "fc7"
   top: "fc7"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.7
   }
 }
 layer {
@@ -632,7 +617,7 @@ layer {
     lr_mult: 2
   }
   inner_product_param {
-    num_output: 4
+    num_output: 9
     weight_filler {
       type: "gaussian"
       std: 0.01
@@ -655,7 +640,7 @@ layer {
     lr_mult: 2
   }
   inner_product_param {
-    num_output: 16    # 4 * 4
+    num_output: 36    # 4 * 9
     weight_filler {
       type: "gaussian"
       std: 0.001

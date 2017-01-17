@@ -60,21 +60,21 @@ def demo(net, image_name, conf_thres, nms_thres, resDir):
     _t = {'im_detect' : Timer(), 'misc' : Timer(), 'save' : Timer()}
 
     _t['im_detect'].tic()
-    cfg_from_list(['TEST.SCALES', '[300]'])
-    scores, boxes = im_detect(net, im)
+    #cfg_from_list(['TEST.SCALES', '[300]'])
+    #scores, boxes = im_detect(net, im)
 
     cfg_from_list(['TEST.SCALES', '[576]'])
-    scores2, boxes2 = im_detect(net, im)
+    scores, boxes = im_detect(net, im)
 
-    cfg_from_list(['TEST.SCALES', '[750]'])
-    scores3, boxes3 = im_detect(net, im)
+    #cfg_from_list(['TEST.SCALES', '[750]'])
+    #scores3, boxes3 = im_detect(net, im)
     _t['im_detect'].toc()
     
     
     _t['misc'].tic()
     
-    scores = np.vstack( (scores, scores2, scores3) )
-    boxes = np.vstack( (boxes, boxes2, boxes3) )
+    #scores = np.vstack( (scores, scores2, scores3) )
+    #boxes = np.vstack( (boxes, boxes2, boxes3) )
 
     results = np.zeros((0, 6), dtype=np.float32)
     # Visualize detections for each class
